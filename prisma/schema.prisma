@@ -1,0 +1,414 @@
+// TaniPro — Prisma Schema
+// Database: PostgreSQL
+// Generated for: TaniPro B2B Agricultural Logistics Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PETANI
+  PEMBELI
+}
+
+enum OrderStatus {
+  PENDING
+  DIBAYAR
+  DIPROSES
+  DIKIRIM
+  DITERIMA
+  DIBATALKAN
+  SENGKETA
+}
+
+enum EscrowStatus {
+  MENUNGGU
+  TERKUNCI
+  DILEPAS
+  DIKEMBALIKAN
+}
+
+enum FleetType {
+  CDE
+  CDD
+  FUSO
+}
+
+enum VehicleStatus {
+  TERSEDIA
+  DALAM_PERJALANAN
+  MAINTENANCE
+  TIDAK_AKTIF
+}
+
+enum ProductStatus {
+  AKTIF
+  HABIS
+  PRE_ORDER
+  DIARSIPKAN
+}
+
+enum ShipmentStatus {
+  MENUNGGU_PICKUP
+  DALAM_PERJALANAN
+  TIBA_DI_HUB
+  SEDANG_DIKIRIM
+  TERKIRIM
+  GAGAL
+}
+
+// ─────────────────────────────────────────────
+// USER & AUTHENTICATION
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  nama          String
+  email         String    @unique
+  telepon       String?
+  passwordHash  String
+  role          Role
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  petaniProfile   PetaniProfile?
+  pembeliProfile  PembeliProfile?
+  taniPoint       TaniPoint?
+  notifikasi      Notifikasi[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// PETANI (FARMER) PROFILE
+// ─────────────────────────────────────────────
+
+model PetaniProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  namaKebun       String
+  alamat          String
+  provinsi        String
+  kabupaten       String
+  latitude        Float?
+  longitude       Float?
+  luasLahan       Float?    // hectares
+  sertifikasiOrganik Boolean @default(false)
+  rating          Float     @default(0)
+  totalPenjualan  Int       @default(0)
+  bergabungSejak  DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  produk    Produk[]
+  preOrders PreOrder[]
+
+  @@map("petani_profiles")
+}
+
+// ─────────────────────────────────────────────
+// PEMBELI (BUYER) PROFILE
+// ─────────────────────────────────────────────
+
+model PembeliProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  namaPerusahaan  String
+  npwp            String?
+  alamatKantor    String
+  industri        String
+  limitKredit     Float     @default(0)
+  isVerified      Boolean   @default(false)
+  updatedAt       DateTime  @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders  Order[]
+
+  @@map("pembeli_profiles")
+}
+
+// ─────────────────────────────────────────────
+// PRODUK (PRODUCTS / CATALOG)
+// ─────────────────────────────────────────────
+
+model Produk {
+  id              String        @id @default(cuid())
+  petaniId        String
+  nama            String
+  deskripsi       String?
+  kategori        String
+  hargaPerKg      Float
+  stokKg          Float
+  beratSatuan     Float         // kg per unit
+  panjangCm       Float?        // packaging dimensions
+  lebarCm         Float?
+  tinggiCm        Float?
+  gambarUrls      String[]
+  status          ProductStatus @default(AKTIF)
+  minPesanan      Float         @default(10) // minimum order in kg
+  sertifikasi     String[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  petani      PetaniProfile  @relation(fields: [petaniId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  preOrders   PreOrder[]
+
+  @@map("produk")
+}
+
+// ─────────────────────────────────────────────
+// PRE-ORDER
+// ─────────────────────────────────────────────
+
+model PreOrder {
+  id            String    @id @default(cuid())
+  produkId      String
+  petaniId      String
+  estimasiPanen DateTime
+  jumlahKg      Float
+  hargaPerKg    Float
+  deskripsi     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  produk  Produk        @relation(fields: [produkId], references: [id])
+  petani  PetaniProfile @relation(fields: [petaniId], references: [id])
+
+  @@map("pre_orders")
+}
+
+// ─────────────────────────────────────────────
+// ORDER
+// ─────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(cuid())
+  pembeliId       String
+  status          OrderStatus @default(PENDING)
+  totalHarga      Float
+  totalBeratKg    Float
+  alamatPengiriman String
+  catatanKhusus   String?
+  fleetRekomendasi FleetType?
+  estimasiTiba    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  pembeli     PembeliProfile  @relation(fields: [pembeliId], references: [id])
+  items       OrderItem[]
+  shipment    Shipment?
+  escrow      Escrow?
+  esgRecord   EsgRecord?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  produkId  String
+  jumlahKg  Float
+  hargaUnit Float
+  subtotal  Float
+
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  produk  Produk @relation(fields: [produkId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─────────────────────────────────────────────
+// SHIPMENT & LOGISTICS
+// ─────────────────────────────────────────────
+
+model Shipment {
+  id              String         @id @default(cuid())
+  orderId         String         @unique
+  vehicleId       String?
+  status          ShipmentStatus @default(MENUNGGU_PICKUP)
+  resiNumber      String         @unique @default(cuid())
+  titikAsal       String
+  titikTujuan     String
+  jarakKm         Float?
+  estimasiJamTiba DateTime?
+  waktuPickup     DateTime?
+  waktuTerkirim   DateTime?
+  trackingHistory Json[]         // array of { waktu, status, lokasi, koordinat }
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@map("shipments")
+}
+
+// ─────────────────────────────────────────────
+// VEHICLE MANAGEMENT SYSTEM (VMS)
+// ─────────────────────────────────────────────
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  platNomor       String        @unique
+  tipe            FleetType
+  status          VehicleStatus @default(TERSEDIA)
+  kapasitasKg     Float
+  kapasitasVolM3  Float
+  supirNama       String?
+  supirTelepon    String?
+  latitudeSaat    Float?        // real-time GPS latitude
+  longitudeSaat   Float?        // real-time GPS longitude
+  lastGpsUpdate   DateTime?
+  totalPerjalanan Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  shipments   Shipment[]
+  loadPlans   LoadPlan[]
+
+  @@map("vehicles")
+}
+
+// ─────────────────────────────────────────────
+// SMART LOAD OPTIMIZATION (3D BIN PACKING)
+// ─────────────────────────────────────────────
+
+model LoadPlan {
+  id                  String   @id @default(cuid())
+  vehicleId           String
+  orderId             String?
+  beratTotalKg        Float
+  volumeTotalM3       Float
+  efisiensiPersen     Float    // packing efficiency %
+  beratMaksKg         Float
+  volumeMaksM3        Float
+  gravitometrikOk     Boolean
+  volumetrikOk        Boolean
+  binPackingResult    Json     // 3D coordinates of each item
+  createdAt           DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@map("load_plans")
+}
+
+// ─────────────────────────────────────────────
+// ESCROW PAYMENT
+// ─────────────────────────────────────────────
+
+model Escrow {
+  id              String       @id @default(cuid())
+  orderId         String       @unique
+  jumlah          Float
+  status          EscrowStatus @default(MENUNGGU)
+  virtualAccount  String?      @unique
+  bankTujuan      String?
+  terkunciPada    DateTime?
+  dilepaskanPada  DateTime?
+  dikembalikanPada DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("escrow")
+}
+
+// ─────────────────────────────────────────────
+// TANI POINT (LOYALTY GAMIFICATION)
+// ─────────────────────────────────────────────
+
+model TaniPoint {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  totalPoin   Int      @default(0)
+  poinDipakai Int      @default(0)
+  level       String   @default("Benih") // Benih → Tunas → Petani → Maestro
+  updatedAt   DateTime @updatedAt
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaksiPoin TaniPointTx[]
+
+  @@map("tani_points")
+}
+
+model TaniPointTx {
+  id          String   @id @default(cuid())
+  taniPointId String
+  jumlah      Int      // positive = earn, negative = redeem
+  keterangan  String
+  referensiId String?  // orderId or consultationId
+  createdAt   DateTime @default(now())
+
+  taniPoint TaniPoint @relation(fields: [taniPointId], references: [id])
+
+  @@map("tani_point_transactions")
+}
+
+// ─────────────────────────────────────────────
+// ESG REPORTING
+// ─────────────────────────────────────────────
+
+model EsgRecord {
+  id                  String   @id @default(cuid())
+  orderId             String   @unique
+  co2eDisimpanKg      Float    // CO2e saved vs conventional
+  co2eEmisiKg         Float    // actual emissions from transport
+  jarakKm             Float
+  fleetTipe           FleetType
+  perbandinganBaseline Float   // baseline CO2e if not using platform
+  metodologi          String   @default("GHG Protocol Scope 3")
+  createdAt           DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("esg_records")
+}
+
+// ─────────────────────────────────────────────
+// AI CONSULTANT (PETANI)
+// ─────────────────────────────────────────────
+
+model KonsultasiAI {
+  id          String   @id @default(cuid())
+  petaniId    String
+  pertanyaan  String
+  jawaban     String
+  topik       String   // harga, cuaca, pasar, hama, dll
+  modelAI     String   @default("gpt-4o")
+  tokenUsed   Int?
+  createdAt   DateTime @default(now())
+
+  @@map("konsultasi_ai")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFIKASI
+// ─────────────────────────────────────────────
+
+model Notifikasi {
+  id        String   @id @default(cuid())
+  userId    String
+  judul     String
+  pesan     String
+  dibaca    Boolean  @default(false)
+  tipe      String   // ORDER, SHIPMENT, PAYMENT, SYSTEM, POINT
+  refId     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifikasi")
+}
