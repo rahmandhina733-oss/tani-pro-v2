@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, ShieldCheck, MoreVertical, Users as UsersIcon } from "lucide-react";
-import { formatTanggalPendek } from "@/lib/utils";
+import { formatTanggalPendek } from "@/lib/format";
 
 const ROLE_CONFIG = {
   PETANI:  { label: "Petani",  warna: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },

@@ -1,6 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  ORIGIN_LOCATION,
+  DESTINATION_CITIES,
+  calculateEsg,
+  co2ToTrees,
+} from '@/lib/esg';
+import EsgComparisonPanel from '@/components/shared/EsgComparisonPanel';
 
 const monthlyData = [
   { month: 'Jan', co2Saved: 8.2, orders: 14, conventional: 22.1 },
@@ -81,6 +88,23 @@ function BarChart({ data }) {
 export default function ESGPage() {
   const [activeTab, setActiveTab] = useState('overview');
 
+  // ── Simulator Jejak Karbon (Mesin Kalkulasi ESG terpusat) ──
+  const [simBeratTon, setSimBeratTon] = useState('5');
+  const [simTujuan, setSimTujuan] = useState('');
+  const [simJarakKm, setSimJarakKm] = useState('');
+
+  const simEsg = useMemo(
+    () => calculateEsg(parseFloat(simBeratTon), parseFloat(simJarakKm)),
+    [simBeratTon, simJarakKm]
+  );
+
+  const handleSimTujuan = (e) => {
+    const nama = e.target.value;
+    setSimTujuan(nama);
+    const kota = DESTINATION_CITIES.find((c) => c.name === nama);
+    if (kota) setSimJarakKm(String(kota.refDistance));
+  };
+
   const totalSaved = monthlyData.reduce((s, m) => s + m.co2Saved, 0);
   const totalConventional = monthlyData.reduce((s, m) => s + m.conventional, 0);
   const reductionPct = ((1 - totalSaved / totalConventional) * 100).toFixed(1);
@@ -157,7 +181,7 @@ export default function ESGPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-white/10 pb-0">
-        {['overview', 'breakdown', 'sertifikasi'].map((tab) => (
+        {['overview', 'simulator', 'breakdown', 'sertifikasi'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -167,7 +191,7 @@ export default function ESGPage() {
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
-            {tab === 'overview' ? 'Ikhtisar' : tab === 'breakdown' ? 'Rincian Sumber' : 'Sertifikasi'}
+            {tab === 'overview' ? 'Ikhtisar' : tab === 'simulator' ? 'Simulator Karbon' : tab === 'breakdown' ? 'Rincian Sumber' : 'Sertifikasi'}
           </button>
         ))}
       </div>
@@ -240,6 +264,69 @@ export default function ESGPage() {
                 </tfoot>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'simulator' && (
+        <div className="space-y-4">
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-slate-200 mb-1">Simulator Jejak Karbon Pengiriman</h3>
+            <p className="text-xs text-slate-500 mb-5">
+              Estimasi emisi CO₂e sebelum memesan — origin dikunci di <span className="text-emerald-400 font-medium">{ORIGIN_LOCATION}</span> 🔒
+            </p>
+
+            <div className="grid sm:grid-cols-3 gap-3 mb-5">
+              <div>
+                <label className="text-xs font-medium text-slate-400 block mb-1.5">Berat Muatan (Ton)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={simBeratTon}
+                  onChange={(e) => setSimBeratTon(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition"
+                  placeholder="cth: 5"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 block mb-1.5">Kota Tujuan</label>
+                <select
+                  value={simTujuan}
+                  onChange={handleSimTujuan}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition appearance-none [&>option]:bg-slate-900"
+                >
+                  <option value="" disabled>Pilih kota...</option>
+                  {DESTINATION_CITIES.map((c) => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 block mb-1.5">Jarak Tempuh (KM)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={simJarakKm}
+                  onChange={(e) => setSimJarakKm(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition"
+                  placeholder="cth: 150"
+                />
+              </div>
+            </div>
+
+            <EsgComparisonPanel
+              weightTon={parseFloat(simBeratTon)}
+              distanceKm={parseFloat(simJarakKm)}
+              showOrigin
+            />
+
+            {simEsg.valid && (
+              <p className="text-xs text-slate-600 mt-4">
+                Dengan {simEsg.tripsTp}× perjalanan {simEsg.fleet.name}, penghematan setara menanam{' '}
+                <span className="text-emerald-400 font-semibold">{co2ToTrees(simEsg.saved)} pohon</span> per tahun.
+              </p>
+            )}
           </div>
         </div>
       )}

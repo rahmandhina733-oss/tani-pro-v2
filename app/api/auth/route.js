@@ -1,12 +1,57 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { SignJWT } from "jose";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/auth — unified register + login endpoint
 // Body for register: { action: "register", nama, email, password, role, ...profileData }
 // Body for login:    { action: "login",    email, password }
+// Body for logout:   { action: "logout" }
+//
+// FIX P0 (Keamanan Sesi):
+// - Login sukses kini meng-generate JWT (library `jose`) berisi { sub, role }
+//   dan menyimpannya di cookie httpOnly "tanipro_session".
+// - Cookie httpOnly TIDAK bisa dibaca JavaScript klien → aman dari XSS,
+//   dan diverifikasi middleware.js di setiap request ke route terproteksi.
+// - Data user yang dikembalikan ke klien hanya untuk kebutuhan TAMPILAN,
+//   BUKAN sumber kebenaran otorisasi.
+//
+// Wajib set di .env: JWT_SECRET="string-acak-min-32-karakter"
 // ─────────────────────────────────────────────────────────────────────────────
+
+const SESSION_COOKIE = "tanipro_session";
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 hari
+
+function getSecretKey() {
+  const secret = process.env.JWT_SECRET ?? "tanipro-dev-only-secret-change-me-in-production!!";
+  return new TextEncoder().encode(secret);
+}
+
+/** Buat JWT sesi berisi identitas minimal (id + role). */
+async function createSessionToken(user) {
+  return new SignJWT({ role: user.role, nama: user.nama, email: user.email })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(user.id)
+    .setIssuer("tanipro")
+    .setAudience("tanipro-web")
+    .setIssuedAt()
+    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
+    .sign(getSecretKey());
+}
+
+/** Pasang cookie sesi httpOnly pada response. */
+function setSessionCookie(response, token) {
+  response.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,                                // tidak terbaca JS klien
+    secure: process.env.NODE_ENV === "production", // HTTPS only di production
+    sameSite: "lax",                               // mitigasi CSRF
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+  return response;
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -83,14 +128,35 @@ export async function POST(request) {
       if (!user || !(await bcrypt.compare(password, user.passwordHash)))
         return NextResponse.json({ success: false, pesan: "Email atau password salah" }, { status: 401 });
 
-      // Return user data (session handled by NextAuth or similar — omit passwordHash)
+      // Generate JWT sesi & set cookie httpOnly (sumber kebenaran otorisasi)
+      const token = await createSessionToken(user);
+
       const { passwordHash: _, ...safeUser } = user;
-      return NextResponse.json({ success: true, pesan: "Login berhasil", data: safeUser });
+      const response = NextResponse.json({
+        success: true,
+        pesan: "Login berhasil",
+        data: safeUser, // hanya untuk tampilan UI — otorisasi via cookie JWT
+      });
+      return setSessionCookie(response, token);
     }
 
-    return NextResponse.json({ success: false, pesan: "action harus 'register' atau 'login'" }, { status: 400 });
+    // ── LOGOUT ────────────────────────────────────────────────────────────────
+    if (action === "logout") {
+      const response = NextResponse.json({ success: true, pesan: "Logout berhasil" });
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
+
+    return NextResponse.json({ success: false, pesan: "action harus 'register', 'login', atau 'logout'" }, { status: 400 });
   } catch (error) {
     console.error("[POST /api/auth]", error);
     return NextResponse.json({ success: false, pesan: "Terjadi kesalahan autentikasi", error: error.message }, { status: 500 });
   }
+}
+
+// DELETE /api/auth — alternatif endpoint logout (hapus cookie sesi)
+export async function DELETE() {
+  const response = NextResponse.json({ success: true, pesan: "Logout berhasil" });
+  response.cookies.delete(SESSION_COOKIE);
+  return response;
 }

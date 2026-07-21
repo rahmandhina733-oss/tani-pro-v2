@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { MapPin, Truck, Phone, Navigation, Radio } from "lucide-react";
-import { formatAngka, formatTanggal, STATUS_VEHICLE_CONFIG } from "@/lib/utils";
+import { formatAngka, formatTanggal } from "@/lib/format";
+import { STATUS_VEHICLE_CONFIG } from "@/lib/status";
 import { FLEET_SPECS } from "@/lib/constants";
+import { getEsgFleet, findRefDistance, ORIGIN_LOCATION } from "@/lib/esg";
+import EsgComparisonPanel from "@/components/shared/EsgComparisonPanel";
 
 // Posisi dinormalisasi 0-100 (persen) untuk ditempatkan di atas peta abstrak
 const ARMADA = [
-  { id: "v1", plat: "B 1234 CDE", tipe: "CDE", status: "DALAM_PERJALANAN", supir: "Budi Santoso", telepon: "0812-3456-7890", x: 32, y: 44, tujuan: "Bekasi, Jawa Barat", eta: "45 menit", totalPerjalanan: 128 },
-  { id: "v2", plat: "B 9021 FUS", tipe: "FUSO", status: "DALAM_PERJALANAN", supir: "Agus Purnomo", telepon: "0813-2233-4455", x: 68, y: 30, tujuan: "Surabaya, Jawa Timur", eta: "3 jam 20 menit", totalPerjalanan: 302 },
+  { id: "v1", plat: "B 1234 CDE", tipe: "CDE", status: "DALAM_PERJALANAN", supir: "Budi Santoso", telepon: "0812-3456-7890", x: 32, y: 44, tujuan: "Bekasi, Jawa Barat", eta: "45 menit", totalPerjalanan: 128, muatanKg: 2400 },
+  { id: "v2", plat: "B 9021 FUS", tipe: "FUSO", status: "DALAM_PERJALANAN", supir: "Agus Purnomo", telepon: "0813-2233-4455", x: 68, y: 30, tujuan: "Surabaya, Jawa Timur", eta: "3 jam 20 menit", totalPerjalanan: 302, muatanKg: 8500 },
   { id: "v3", plat: "B 4521 CDD", tipe: "CDD", status: "TERSEDIA", supir: "Rahmat Hidayat", telepon: "0821-9988-7766", x: 50, y: 62, tujuan: "-", eta: "-", totalPerjalanan: 87 },
   { id: "v4", plat: "B 7788 CDE", tipe: "CDE", status: "MAINTENANCE", supir: "Dedi Kurniawan", telepon: "0856-1122-3344", x: 22, y: 70, tujuan: "-", eta: "-", totalPerjalanan: 214 },
   { id: "v5", plat: "B 3390 FUS", tipe: "FUSO", status: "TERSEDIA", supir: "Wawan Setiadi", telepon: "0877-5566-7788", x: 78, y: 55, tujuan: "-", eta: "-", totalPerjalanan: 176 },
@@ -21,6 +24,8 @@ export default function VmsPage() {
   const [dipilih, setDipilih] = useState(ARMADA[0].id);
   const kendaraan = ARMADA.find((v) => v.id === dipilih) ?? ARMADA[0];
   const spec = FLEET_SPECS[kendaraan.tipe];
+  const esgFleet = getEsgFleet(kendaraan.tipe);
+  const jarakRute = kendaraan.tujuan !== "-" ? findRefDistance(kendaraan.tujuan) : null;
 
   return (
     <div className="space-y-6">
@@ -136,15 +141,33 @@ export default function VmsPage() {
         </div>
 
         {kendaraan.status === "DALAM_PERJALANAN" ? (
-          <div className="rounded-xl bg-blue-500/5 border border-blue-500/20 p-4 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <MapPin className="w-4 h-4 text-blue-400" />
-              <div>
-                <p className="text-sm text-slate-200">Menuju <span className="font-medium">{kendaraan.tujuan}</span></p>
-                <p className="text-xs text-slate-500">Total {formatAngka(kendaraan.totalPerjalanan)} perjalanan selesai</p>
+          <div className="space-y-4">
+            <div className="rounded-xl bg-blue-500/5 border border-blue-500/20 p-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-blue-400" />
+                <div>
+                  <p className="text-sm text-slate-200">
+                    <span className="text-slate-500">{ORIGIN_LOCATION} → </span>
+                    Menuju <span className="font-medium">{kendaraan.tujuan}</span>
+                    {jarakRute && <span className="text-slate-500"> · ±{jarakRute} km</span>}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Total {formatAngka(kendaraan.totalPerjalanan)} perjalanan selesai
+                    {kendaraan.muatanKg ? ` · muatan ${formatAngka(kendaraan.muatanKg)} kg` : ""}
+                  </p>
+                </div>
               </div>
+              <span className="status-pill border text-blue-400 bg-blue-400/10 border-blue-400/20">ETA {kendaraan.eta}</span>
             </div>
-            <span className="status-pill border text-blue-400 bg-blue-400/10 border-blue-400/20">ETA {kendaraan.eta}</span>
+
+            {/* Estimasi emisi rute aktif — Mesin Kalkulasi ESG */}
+            {jarakRute && kendaraan.muatanKg && (
+              <EsgComparisonPanel
+                weightTon={kendaraan.muatanKg / 1000}
+                distanceKm={jarakRute}
+                fleetOverride={esgFleet}
+              />
+            )}
           </div>
         ) : (
           <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 text-sm text-slate-500">

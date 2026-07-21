@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { BrainCircuit, Send, TrendingUp, CloudSun, Bug, ShoppingBasket, Sparkles } from "lucide-react";
-import { hitungPointPetani } from "@/lib/utils";
+import { hitungPointPetani } from "@/lib/tani-point";
 
 const TOPIK_SARAN = [
   { label: "Harga pasar hari ini", topik: "harga", icon: TrendingUp, warna: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },

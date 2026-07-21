@@ -6,9 +6,8 @@ import {
   CalendarClock, Truck, BrainCircuit, Plus,
 } from "lucide-react";
 import StatCard from "@/components/shared/StatCard";
-import {
-  formatRupiah, formatAngka, formatTanggalPendek, STATUS_ORDER_CONFIG,
-} from "@/lib/utils";
+import { formatRupiah, formatAngka, formatTanggalPendek } from "@/lib/format";
+import { STATUS_ORDER_CONFIG } from "@/lib/status";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock data — replace with server-fetched data (Prisma) once API routes exist

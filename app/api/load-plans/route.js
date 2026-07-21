@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { FLEET_SPECS } from "@/lib/constants";
-import { hitungGravimetrikCheck, hitungVolumetrikCheck, hitungVolumeKardus } from "@/lib/utils";
+import { hitungGravimetrikCheck, hitungVolumetrikCheck, hitungVolumeKardus } from "@/lib/cargo";
 
 // GET /api/load-plans — list load plans, filter by vehicleId
 export async function GET(request) {

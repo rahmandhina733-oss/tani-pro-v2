@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { Box, PackageCheck, AlertTriangle, Scale, Ruler } from "lucide-react";
-import { formatAngka, hitungVolumeKardus, hitungGravimetrikCheck, hitungVolumetrikCheck } from "@/lib/utils";
+import { hitungVolumeKardus, hitungGravimetrikCheck, hitungVolumetrikCheck } from "@/lib/cargo";
+import { formatAngka } from "@/lib/format";
 import { FLEET_SPECS } from "@/lib/constants";
+import { getEsgFleet, ORIGIN_LOCATION } from "@/lib/esg";
+import EsgComparisonPanel from "@/components/shared/EsgComparisonPanel";
 
 const MUATAN = [
   { id: "i1", nama: "Beras Premium (karung 25kg)", jumlah: 80, beratSatuanKg: 25, p: 60, l: 40, t: 20, warna: "#34d399" },
@@ -21,7 +24,9 @@ const BLOK_VISUAL = [
 
 export default function LoadOptimizerPage() {
   const [fleetTipe, setFleetTipe] = useState("FUSO");
+  const [jarakKm, setJarakKm] = useState("150");
   const spec = FLEET_SPECS[fleetTipe];
+  const esgFleet = getEsgFleet(fleetTipe);
 
   const kalkulasi = useMemo(() => {
     let beratTotal = 0;
@@ -153,6 +158,40 @@ export default function LoadOptimizerPage() {
               Muatan tidak muat pada armada ini. Pertimbangkan mengganti ke armada dengan kapasitas lebih besar atau membagi ke 2 kendaraan.
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Simulasi Emisi ESG (Mesin Kalkulasi Terpusat) ───────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-semibold text-slate-200 mb-1">Simulasi Jarak Rute</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            Origin dikunci: <span className="text-emerald-400 font-medium">{ORIGIN_LOCATION}</span> 🔒
+          </p>
+          <label className="text-xs font-medium text-slate-400 block mb-1.5">Jarak Tempuh — D (KM)</label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              value={jarakKm}
+              onChange={(e) => setJarakKm(e.target.value)}
+              className="input-field w-full pr-12"
+              placeholder="Masukkan jarak..."
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">KM</span>
+          </div>
+          <p className="text-[11px] text-slate-600 mt-3">
+            Muatan simulasi: <span className="text-slate-400 font-semibold">{(kalkulasi.beratTotal / 1000).toFixed(2)} Ton</span>
+            {" "}· Armada dipilih: <span className="text-emerald-500 font-semibold">{esgFleet?.name}</span> (EF {esgFleet?.emissionFactor} kg CO₂e/km)
+          </p>
+        </div>
+        <div className="lg:col-span-2">
+          <EsgComparisonPanel
+            weightTon={kalkulasi.beratTotal / 1000}
+            distanceKm={parseFloat(jarakKm)}
+            fleetOverride={esgFleet}
+            showOrigin
+          />
         </div>
       </div>
     </div>

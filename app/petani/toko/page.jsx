@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Search, Pencil, Package, Leaf, ImageOff } from "lucide-react";
-import { formatRupiah, formatAngka } from "@/lib/utils";
+import { formatRupiah, formatAngka } from "@/lib/format";
 import { KATEGORI_PRODUK } from "@/lib/constants";
 
 const STATUS_PRODUK_CONFIG = {

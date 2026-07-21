@@ -10,7 +10,8 @@ import {
   ChevronLeft, ChevronRight, Sprout,
 } from "lucide-react";
 import { NAV_PETANI, NAV_PEMBELI, NAV_ADMIN } from "@/lib/constants";
-import { getLevelTaniPoint, formatAngka } from "@/lib/utils";
+import { formatAngka } from "@/lib/format";
+import { getLevelTaniPoint } from "@/lib/tani-point";
 
 const ICON_MAP = {
   LayoutDashboard, Store, Package, CalendarClock, Truck,

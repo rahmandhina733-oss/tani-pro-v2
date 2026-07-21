@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   Leaf, Truck, ShieldCheck, BarChart2,
   BrainCircuit, Star, ArrowRight, CheckCircle2,
-  Package, MapPin, Zap,
+  Package, MapPin,
 } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 
@@ -25,7 +25,7 @@ const FEATURES = [
     color: "from-emerald-500/20 to-emerald-500/5",
     border:"border-emerald-500/15",
     accent:"text-emerald-400",
-    href:  "/pembeli/katalog",
+    href:  "/tentang-fitur#marketplace",
   },
   {
     icon: <Truck className="w-6 h-6" />,
@@ -34,7 +34,7 @@ const FEATURES = [
     color: "from-blue-500/20 to-blue-500/5",
     border:"border-blue-500/15",
     accent:"text-blue-400",
-    href:  "/pembeli/checkout",
+    href:  "/tentang-fitur#vms",
   },
   {
     icon: <ShieldCheck className="w-6 h-6" />,
@@ -43,7 +43,7 @@ const FEATURES = [
     color: "from-purple-500/20 to-purple-500/5",
     border:"border-purple-500/15",
     accent:"text-purple-400",
-    href:  "/pembeli/escrow",
+    href:  "/tentang-fitur#escrow",
   },
   {
     icon: <BarChart2 className="w-6 h-6" />,
@@ -52,7 +52,7 @@ const FEATURES = [
     color: "from-teal-500/20 to-teal-500/5",
     border:"border-teal-500/15",
     accent:"text-teal-400",
-    href:  "/pembeli/esg",
+    href:  "/tentang-fitur#esg",
   },
   {
     icon: <BrainCircuit className="w-6 h-6" />,
@@ -61,7 +61,7 @@ const FEATURES = [
     color: "from-violet-500/20 to-violet-500/5",
     border:"border-violet-500/15",
     accent:"text-violet-400",
-    href:  "/petani/ai-konsultan",
+    href:  "/tentang-fitur#ai",
   },
   {
     icon: <Star className="w-6 h-6" />,
@@ -70,7 +70,7 @@ const FEATURES = [
     color: "from-amber-500/20 to-amber-500/5",
     border:"border-amber-500/15",
     accent:"text-amber-400",
-    href:  "/pembeli/tani-point",
+    href:  "/tentang-fitur#tani-point",
   },
 ];
 
@@ -84,7 +84,7 @@ const ROLES = [
       "Laporan ESG otomatis tiap transaksi",
       "Pembayaran aman via escrow",
     ],
-    href:    "/pembeli",
+    href:    "/login",
     color:   "from-blue-500 to-cyan-400",
     bgGlow:  "bg-blue-500/5",
     border:  "border-blue-500/20",
@@ -99,7 +99,7 @@ const ROLES = [
       "AI Konsultan untuk strategi bisnis",
       "Tani Point dari setiap kg terjual",
     ],
-    href:    "/petani",
+    href:    "/login",
     color:   "from-emerald-500 to-teal-400",
     bgGlow:  "bg-emerald-500/5",
     border:  "border-emerald-500/20",
@@ -157,11 +157,11 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/pembeli" className="btn-emerald text-base px-8 py-3.5 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <Link href="/login" className="btn-emerald text-base px-8 py-3.5 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                 Mulai sebagai Pembeli
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/petani" className="btn-ghost text-base px-8 py-3.5 rounded-2xl">
+              <Link href="/login" className="btn-ghost text-base px-8 py-3.5 rounded-2xl">
                 Daftarkan Toko Petani
               </Link>
             </div>
@@ -353,24 +353,15 @@ export default function LandingPage() {
                     href={r.href}
                     className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-gradient-to-r ${r.color} hover:opacity-90 transition-opacity shadow-lg`}
                   >
-                    Masuk ke Dashboard {r.role}
+                    Masuk / Daftar sebagai {r.role}
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               ))}
             </div>
-
-            {/* Admin link */}
-            <div className="mt-4 text-center">
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Admin Command Center
-                <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
+            {/* CATATAN ARSITEKTUR: Tautan "Admin Command Center" DIHAPUS
+                dari antarmuka publik. Akses admin hanya via URL rahasia
+                manual: /admin/login */}
           </div>
         </section>
 
@@ -401,7 +392,7 @@ export default function LandingPage() {
                 {[
                   {
                     heading: "Platform",
-                    links: ["Pembeli", "Petani", "Admin", "API"],
+                    links: ["Tentang Fitur", "Harga", "API", "Status"],
                   },
                   {
                     heading: "Fitur",

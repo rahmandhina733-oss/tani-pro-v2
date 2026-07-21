@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { Search, ShieldCheck, Lock, Unlock, RotateCcw } from "lucide-react";
-import { formatRupiah, formatTanggalPendek, STATUS_ESCROW_CONFIG } from "@/lib/utils";
+import { formatRupiah, formatTanggalPendek } from "@/lib/format";
+import { STATUS_ESCROW_CONFIG } from "@/lib/status";
 import { ESCROW_CONFIG } from "@/lib/constants";
 
 const ESCROW_AWAL = [

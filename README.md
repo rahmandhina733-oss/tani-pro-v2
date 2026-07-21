@@ -157,3 +157,63 @@ DATABASE_URL="<connection-string-production>" node prisma/seed.js
 - `next.config.js` saat ini membatasi Server Actions hanya untuk `localhost:3000` (`experimental.serverActions.allowedOrigins`). Setelah punya domain Vercel (misalnya `tanipro.vercel.app`), tambahkan domain tersebut ke daftar `allowedOrigins`, atau Server Actions akan gagal di production.
 - Sesi user saat ini masih **mock** (`MOCK_USER` di masing-masing `layout.jsx`) — belum terhubung ke auth sungguhan. Aman untuk demo, tapi perlu diganti sebelum dipakai produksi nyata.
 - Gunakan Postgres yang mendukung koneksi serverless/pooled (Neon & Supabase sudah otomatis menyediakan ini) agar tidak kehabisan koneksi saat traffic naik di lingkungan serverless Vercel.
+
+═══════════════════════════════════════════════════════════════
+  DAFTAR AKUN DEMO — TANIPRO (sumber: prisma/seed.js)
+  Jalankan dulu: npm run db:push && npm run db:seed
+═══════════════════════════════════════════════════════════════
+
+1) ADMIN
+   Nama      : Admin TaniPro
+   Email     : admin@tanipro.id
+   Password  : admin123
+   Role      : ADMIN
+   Login via : /admin/login  (URL rahasia — tidak ditautkan di UI publik)
+   Dasbor    : /admin
+
+───────────────────────────────────────────────────────────────
+
+2) PETANI #1
+   Nama      : Budi Santoso
+   Email     : budi@tanipro.id
+   Password  : petani123
+   Role      : PETANI
+   Kebun     : Kebun Berkah Jaya — Malang, Jawa Timur
+   Tani Point: 125 pt (Level: Tunas)
+   Login via : /login
+   Dasbor    : /petani
+
+───────────────────────────────────────────────────────────────
+
+3) PETANI #2
+   Nama      : Sari Dewi
+   Email     : sari@tanipro.id
+   Password  : petani123
+   Role      : PETANI
+   Kebun     : Lahan Organik Sari — Kediri, Jawa Timur
+   Tani Point: 78 pt (Level: Benih)
+   Login via : /login
+   Dasbor    : /petani
+
+───────────────────────────────────────────────────────────────
+
+4) PEMBELI
+   Nama       : Rudi Hermawan
+   Email      : pt.segar@tanipro.id
+   Password   : pembeli123
+   Role       : PEMBELI
+   Perusahaan : PT Segar Nusantara — SIER, Surabaya (Pengolahan Makanan)
+   Tani Point : 2.340 pt (Level: Petani)
+   Login via  : /login
+   Dasbor     : /pembeli
+
+═══════════════════════════════════════════════════════════════
+CATATAN
+- Password di database tersimpan sebagai hash bcrypt; nilai di atas
+  adalah password plaintext yang dipakai saat seeding.
+- Akun ADMIN hanya bisa masuk lewat /admin/login (gerbang role
+  menolak non-ADMIN). Akun PETANI/PEMBELI masuk lewat /login dan
+  otomatis diarahkan ke dasbor sesuai role.
+- Ini kredensial demo untuk development — WAJIB diganti sebelum
+  deploy ke produksi.
+═══════════════════════════════════════════════════════════════

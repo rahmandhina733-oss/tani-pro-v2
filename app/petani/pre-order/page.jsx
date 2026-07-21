@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarClock, Plus, X, Sprout } from "lucide-react";
-import { formatRupiah, formatAngka, formatTanggal } from "@/lib/utils";
+import { formatRupiah, formatAngka, formatTanggal } from "@/lib/format";
 import { KATEGORI_PRODUK } from "@/lib/constants";
 
 const PRE_ORDER_AWAL = [

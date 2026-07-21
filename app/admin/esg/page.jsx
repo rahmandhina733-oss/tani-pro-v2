@@ -6,8 +6,9 @@ import {
   BarChart, Bar, Cell,
 } from "recharts";
 import StatCard from "@/components/shared/StatCard";
-import { formatAngka } from "@/lib/utils";
+import { formatAngka } from "@/lib/format";
 import { FLEET_SPECS } from "@/lib/constants";
+import { PICKUP_L300, TANIPRO_FLEETS, VMS_OPTIMIZATION_FACTOR, ORIGIN_LOCATION } from "@/lib/esg";
 
 const TREN_BULANAN = [
   { bulan: "Feb", co2eDisimpan: 9.4 },
@@ -104,8 +105,40 @@ export default function AdminEsgPage() {
         </div>
       </div>
 
-      <div className="glass-card p-5 text-xs text-slate-500">
-        Metodologi: GHG Protocol Scope 3 — Category 4 (Upstream Transportation and Distribution). Baseline emisi dihitung dari rantai pasok konvensional non-platform.
+      {/* Parameter Mesin Kalkulasi ESG (sumber: lib/esg.js) */}
+      <div className="glass-card p-5">
+        <h2 className="text-base font-semibold text-slate-50 mb-1">Parameter Mesin Kalkulasi ESG</h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Konstanta yang digunakan seluruh platform · Origin dikunci: <span className="text-emerald-400 font-medium">{ORIGIN_LOCATION}</span> · Optimasi rute VMS: hemat {Math.round((1 - VMS_OPTIMIZATION_FACTOR) * 100)}% jarak
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="text-left py-2 pr-4 text-xs text-slate-500 font-medium">Armada</th>
+                <th className="text-right py-2 px-4 text-xs text-slate-500 font-medium">Kapasitas (Ton)</th>
+                <th className="text-right py-2 pl-4 text-xs text-slate-500 font-medium">Faktor Emisi (kg CO₂e/km)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-white/5">
+                <td className="py-2 pr-4 text-slate-400">{PICKUP_L300.icon} {PICKUP_L300.name} <span className="text-[10px] text-rose-400/70">(baseline konvensional)</span></td>
+                <td className="py-2 px-4 text-right text-slate-300 tabular-nums">{PICKUP_L300.capacity}</td>
+                <td className="py-2 pl-4 text-right text-slate-300 tabular-nums">{PICKUP_L300.emissionFactor}</td>
+              </tr>
+              {TANIPRO_FLEETS.map((f) => (
+                <tr key={f.id} className="border-b border-white/5 last:border-b-0">
+                  <td className="py-2 pr-4 text-slate-400">{f.icon} {f.name} <span className="text-[10px] text-emerald-400/70">(Smart Load)</span></td>
+                  <td className="py-2 px-4 text-right text-slate-300 tabular-nums">{f.capacity}</td>
+                  <td className="py-2 pl-4 text-right text-slate-300 tabular-nums">{f.emissionFactor}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-600 mt-4">
+          Metodologi: GHG Protocol Scope 3 — Category 4 (Upstream Transportation and Distribution). Baseline emisi dihitung dari rantai pasok konvensional non-platform. Formula: E = ⌈W/C⌉ × D × EF, dengan D<sub>opt</sub> = D × {VMS_OPTIMIZATION_FACTOR} untuk armada TaniPro.
+        </p>
       </div>
     </div>
   );

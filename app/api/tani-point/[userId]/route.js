@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getLevelTaniPoint } from "@/lib/utils";
+import { getLevelTaniPoint } from "@/lib/tani-point";
 
 // GET /api/tani-point/[userId] — get user's points, level, transaction history
 export async function GET(request, { params }) {

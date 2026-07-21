@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { Search, ClipboardList } from "lucide-react";
-import { formatRupiah, formatAngka, formatTanggalPendek, STATUS_ORDER_CONFIG } from "@/lib/utils";
+import { formatRupiah, formatAngka, formatTanggalPendek } from "@/lib/format";
+import { STATUS_ORDER_CONFIG } from "@/lib/status";
 
 const SEMUA_ORDER = [
   { id: "ORD-7902", pembeli: "PT Cipta Boga", petani: "Kebun Makmur (Pak Slamet)", produk: "Beras Premium Pandan Wangi", totalKg: 1200, total: 15000000, status: "DIKIRIM", createdAt: "2026-07-14", fleet: "CDD" },

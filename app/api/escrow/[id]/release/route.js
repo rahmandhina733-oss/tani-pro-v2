@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { hitungPointPetani } from "@/lib/utils";
+import { hitungPointPetani } from "@/lib/tani-point";
 
 // POST /api/escrow/[id]/release — Admin manually releases escrow funds
 // Body: { alasan? }

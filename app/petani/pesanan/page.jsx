@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ClipboardList, ChevronRight } from "lucide-react";
-import { formatRupiah, formatAngka, formatTanggal, STATUS_ORDER_CONFIG } from "@/lib/utils";
+import { formatRupiah, formatAngka, formatTanggal } from "@/lib/format";
+import { STATUS_ORDER_CONFIG } from "@/lib/status";
 
 const SEMUA_PESANAN = [
   { id: "ord_001", pembeli: "PT Agro Nusantara", perusahaan: "Industri Pangan", produk: "Beras Premium Pandan Wangi", jumlahKg: 2000, hargaPerKg: 12500, status: "DIBAYAR", createdAt: "2026-07-14", alamat: "Kawasan Industri MM2100, Bekasi" },
@@ -95,9 +97,12 @@ export default function PesananPage() {
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 ) : (
-                  <button className="btn-ghost text-xs px-4 py-2 whitespace-nowrap">
-                    Detail
-                  </button>
+                  <Link
+                    href={`/petani/pesanan/${p.id}`}
+                    className="btn-ghost text-xs px-4 py-2 whitespace-nowrap"
+                  >
+                    Lacak / Detail
+                  </Link>
                 )}
               </div>
             </div>

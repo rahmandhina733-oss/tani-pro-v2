@@ -6,7 +6,8 @@ import {
   MapPin, Box, Users, ShieldCheck, CircleAlert,
 } from "lucide-react";
 import StatCard from "@/components/shared/StatCard";
-import { formatRupiah, formatAngka, STATUS_ORDER_CONFIG } from "@/lib/utils";
+import { formatRupiah, formatAngka } from "@/lib/format";
+import { STATUS_ORDER_CONFIG } from "@/lib/status";
 
 const RINGKASAN = {
   totalOrderAktif: 284,

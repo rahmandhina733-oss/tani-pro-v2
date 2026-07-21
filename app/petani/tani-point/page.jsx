@@ -1,7 +1,8 @@
 "use client";
 
 import { Star, TrendingUp, TrendingDown, Sprout, Leaf, Trophy } from "lucide-react";
-import { formatAngka, formatTanggal, getLevelTaniPoint } from "@/lib/utils";
+import { formatAngka, formatTanggal } from "@/lib/format";
+import { getLevelTaniPoint } from "@/lib/tani-point";
 import { TANI_POINT_RULES } from "@/lib/constants";
 
 const TOTAL_POIN = 1240;

@@ -53,18 +53,23 @@ export default function Navbar({ user = null, notifCount = 0 }) {
             </span>
           </Link>
 
-          {/* ── Center: Role Switcher (desktop) ── */}
+          {/* ── Center: Public Nav (desktop) ──
+              CATATAN ARSITEKTUR: Tautan dasbor role (Pembeli/Petani/Admin)
+              sengaja DIHAPUS dari antarmuka publik. Akses dasbor hanya
+              melalui otentikasi di /login. Akses Admin hanya via URL
+              rahasia manual: /admin/login (tidak ditautkan di mana pun). */}
           {isLanding ? (
             <div className="hidden md:flex items-center gap-1">
               {[
-                { href: "/pembeli", label: "Pembeli", color: "hover:text-blue-400" },
-                { href: "/petani",  label: "Petani",  color: "hover:text-emerald-400" },
-                { href: "/admin",   label: "Admin",   color: "hover:text-purple-400" },
+                { href: "/tentang-fitur",      label: "Fitur" },
+                { href: "/tentang-fitur#esg",  label: "ESG" },
+                { href: "/tentang-fitur#vms",  label: "Logistik VMS" },
+                { href: "/tentang-fitur#ai",   label: "AI Konsultan" },
               ].map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 ${item.color} hover:bg-white/5 transition-all duration-150`}
+                  className="px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-all duration-150"
                 >
                   {item.label}
                 </Link>
@@ -85,12 +90,15 @@ export default function Navbar({ user = null, notifCount = 0 }) {
 
             {/* Notification Bell */}
             {role && (
-              <button className="relative p-2 rounded-xl text-slate-400 hover:text-slate-50 hover:bg-white/5 transition-colors">
+              <Link
+                href="/notifikasi"
+                className="relative p-2 rounded-xl text-slate-400 hover:text-slate-50 hover:bg-white/5 transition-colors"
+              >
                 <Bell className="w-5 h-5" />
                 {notifCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse-glow" />
                 )}
-              </button>
+              </Link>
             )}
 
             {/* User menu */}
@@ -117,7 +125,7 @@ export default function Navbar({ user = null, notifCount = 0 }) {
                       <p className="text-xs text-slate-500 truncate">{user.email}</p>
                     </div>
                     <Link
-                      href={`/${role}/profil`}
+                      href="/profil"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-slate-50 hover:bg-white/5 transition-colors"
                     >
@@ -125,7 +133,7 @@ export default function Navbar({ user = null, notifCount = 0 }) {
                       Profil Saya
                     </Link>
                     <Link
-                      href={`/${role}/pengaturan`}
+                      href="/pengaturan"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-slate-50 hover:bg-white/5 transition-colors"
                     >
@@ -145,7 +153,9 @@ export default function Navbar({ user = null, notifCount = 0 }) {
                 <Link href="/login" className="btn-ghost text-xs px-4 py-2">
                   Masuk
                 </Link>
-                <Link href="/daftar" className="btn-emerald text-xs px-4 py-2">
+                {/* CATATAN: Sesuai evaluasi UX, semua CTA otentikasi
+                    diarahkan murni ke /login (registrasi via tab di sana). */}
+                <Link href="/login" className="btn-emerald text-xs px-4 py-2">
                   Daftar Gratis
                 </Link>
               </div>
@@ -166,9 +176,10 @@ export default function Navbar({ user = null, notifCount = 0 }) {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-white/[0.06] px-4 py-3 space-y-1 bg-slate-950/95">
           {[
-            { href: "/pembeli", label: "Pembeli Dashboard" },
-            { href: "/petani",  label: "Petani Dashboard" },
-            { href: "/admin",   label: "Admin Command Center" },
+            { href: "/tentang-fitur",      label: "Tentang Fitur" },
+            { href: "/tentang-fitur#esg",  label: "ESG Reporting" },
+            { href: "/tentang-fitur#vms",  label: "Logistik VMS" },
+            { href: "/tentang-fitur#ai",   label: "AI Konsultan" },
           ].map((item) => (
             <Link
               key={item.href}
@@ -181,8 +192,8 @@ export default function Navbar({ user = null, notifCount = 0 }) {
           ))}
           {!user && (
             <div className="pt-2 flex gap-2">
-              <Link href="/login"  className="btn-ghost flex-1 text-center text-xs py-2">Masuk</Link>
-              <Link href="/daftar" className="btn-emerald flex-1 text-center text-xs py-2">Daftar</Link>
+              <Link href="/login" className="btn-ghost flex-1 text-center text-xs py-2">Masuk</Link>
+              <Link href="/login" className="btn-emerald flex-1 text-center text-xs py-2">Daftar</Link>
             </div>
           )}
         </div>

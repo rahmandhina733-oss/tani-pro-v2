@@ -1,140 +1,217 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Check,
+  ChevronRight,
+  ClipboardList,
+  Leaf,
+  Lightbulb,
+  Lock,
+  Route,
+  Star,
+  X,
+} from "lucide-react";
+import useCartSummary from "@/hooks/useCartSummary";
+import useCheckoutWizard from "@/hooks/useCheckoutWizard";
+import { TANIPRO_FLEETS, DESTINATION_CITIES, calculateEsg } from "@/lib/esg";
+import { FLEET_OPTIONS } from "@/lib/fleet";
+import { formatAngka, formatRupiah } from "@/lib/format";
+import EsgCalculatorCard from "@/components/features/checkout/EsgCalculatorCard";
+import Card, { CardTitle } from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 
-const fleetOptions = [
-  {
-    id: 'cde',
-    name: 'CDE (Cold Diesel Engine)',
-    capacity: '3.5 ton / 12 m³',
-    maxWeight: 3500,
-    maxVolume: 12,
-    bestFor: 'Pengiriman kota dalam radius 100km',
-    price: 850000,
-    priceLabel: 'Rp 850.000',
-    co2: 2.1,
-    time: '1–2 hari',
-    icon: '🚐',
-    color: 'blue',
-  },
-  {
-    id: 'cdd',
-    name: 'CDD (Cold Double Diesel)',
-    capacity: '8 ton / 30 m³',
-    maxWeight: 8000,
-    maxVolume: 30,
-    bestFor: 'Antar kota Pulau Jawa',
-    price: 1400000,
-    priceLabel: 'Rp 1.400.000',
-    co2: 3.8,
-    time: '2–3 hari',
-    icon: '🚛',
-    color: 'emerald',
-  },
-  {
-    id: 'fuso',
-    name: 'Fuso (Heavy Truck)',
-    capacity: '15 ton / 55 m³',
-    maxWeight: 15000,
-    maxVolume: 55,
-    bestFor: 'Pengiriman massal antar pulau',
-    price: 2800000,
-    priceLabel: 'Rp 2.800.000',
-    co2: 7.2,
-    time: '3–5 hari',
-    icon: '🚚',
-    color: 'amber',
-  },
-];
-
+/* ============================================================
+   COLOR MAP — Object literal class Tailwind UTUH
+   (FIX P0 Tailwind Purge — jangan pernah membangun class via
+   manipulasi string; setiap varian ditulis lengkap & literal)
+   ============================================================ */
 const colorMap = {
   blue: {
-    border: 'border-blue-500/40',
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-400',
-    badge: 'bg-blue-500/15 text-blue-400',
-    glow: 'shadow-[0_0_25px_-5px_rgba(59,130,246,0.3)]',
+    border: "border-blue-500/40",
+    bg: "bg-blue-500/10",
+    text: "text-blue-400",
+    badge: "bg-blue-500/15 text-blue-400",
+    glow: "shadow-[0_0_25px_-5px_rgba(59,130,246,0.3)]",
+    dot: "bg-blue-500",
   },
   emerald: {
-    border: 'border-emerald-500/40',
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    badge: 'bg-emerald-500/15 text-emerald-400',
-    glow: 'shadow-[0_0_25px_-5px_rgba(16,185,129,0.3)]',
+    border: "border-emerald-500/40",
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-400",
+    badge: "bg-emerald-500/15 text-emerald-400",
+    glow: "shadow-[0_0_25px_-5px_rgba(16,185,129,0.3)]",
+    dot: "bg-emerald-500",
   },
   amber: {
-    border: 'border-amber-500/40',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    badge: 'bg-amber-500/15 text-amber-400',
-    glow: 'shadow-[0_0_25px_-5px_rgba(245,158,11,0.3)]',
+    border: "border-amber-500/40",
+    bg: "bg-amber-500/10",
+    text: "text-amber-400",
+    badge: "bg-amber-500/15 text-amber-400",
+    glow: "shadow-[0_0_25px_-5px_rgba(245,158,11,0.3)]",
+    dot: "bg-amber-500",
   },
 };
 
-// Mock order items
-const mockOrderItems = [
-  { id: 1, name: 'Beras Premium Pandan Wangi', qty: 2000, unit: 'kg', price: 12500, weight: 2000, volume: 2.5 },
-  { id: 2, name: 'Jagung Hibrida Pipilan Kering', qty: 3000, unit: 'kg', price: 4800, weight: 3000, volume: 4.2 },
+const PAYMENT_METHODS = [
+  {
+    id: "escrow",
+    label: "Escrow TaniPro",
+    desc: "Dana ditahan hingga barang diterima & dikonfirmasi. Transaksi aman 100%.",
+    badge: "Disarankan",
+    icon: "🔒",
+  },
+  {
+    id: "transfer",
+    label: "Transfer Bank Langsung",
+    desc: "Transfer ke rekening petani/koperasi. Proses manual 1–2 hari kerja.",
+    badge: null,
+    icon: "🏦",
+  },
+  {
+    id: "credit",
+    label: "Kredit Usaha (Cicilan)",
+    desc: "Bayar nanti dengan tenor 30–90 hari. Tersedia untuk pembeli terverifikasi.",
+    badge: "KUR Ready",
+    icon: "📋",
+  },
 ];
 
-function getRecommendedFleet(totalWeight) {
-  if (totalWeight <= 3500) return 'cde';
-  if (totalWeight <= 8000) return 'cdd';
-  return 'fuso';
-}
-
 export default function CheckoutPage() {
-  const [step, setStep] = useState(1);
-  const [selectedFleet, setSelectedFleet] = useState(null);
-  const [destination, setDestination] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('escrow');
-  const [orderPlaced, setOrderPlaced] = useState(false);
+  /* ---------- Keranjang: agregat & aksi via hook (FASE 2, Pilar 2.4) ---------- */
+  const {
+    items,
+    subtotal,
+    totalWeightKg,
+    totalWeightTon,
+    totalVolumeM3,
+    removeItem,
+    clearCart,
+  } = useCartSummary();
 
-  const totalWeight = mockOrderItems.reduce((s, i) => s + i.weight, 0);
-  const totalVolume = mockOrderItems.reduce((s, i) => s + i.volume, 0);
-  const subtotal = mockOrderItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const recommendedId = getRecommendedFleet(totalWeight);
-  const fleet = fleetOptions.find((f) => f.id === selectedFleet);
+  /* ---------- State lokal halaman ---------- */
+  const [selectedFleet, setSelectedFleet] = useState(null);
+  const [destination, setDestination] = useState("");
+  const [distanceKm, setDistanceKm] = useState(""); // Jarak Tempuh (KM) — variabel D
+  const [paymentMethod, setPaymentMethod] = useState("escrow");
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderEsg, setOrderEsg] = useState(null);
+  const [orderTotal, setOrderTotal] = useState(0);
+
+  /* ---------- Wizard step: state machine via hook (FASE 2, Pilar 2.4) ------- */
+  const wizard = useCheckoutWizard({
+    guards: {
+      1: () => items.length > 0,
+      2: () => !!selectedFleet,
+    },
+  });
+
+  const fleet = FLEET_OPTIONS.find((f) => f.id === selectedFleet);
   const grandTotal = subtotal + (fleet?.price || 0);
 
+  /* ============================================================
+     MESIN KALKULASI ESG REAL-TIME
+     D_opt = D × 0.7 · E_conv = ceil(W/C_pickup) × D × EF_pickup
+     E_tp  = ceil(W/C_armada) × D_opt × EF_armada · Saved = E_conv − E_tp
+     ============================================================ */
+  const esg = useMemo(
+    () => calculateEsg(totalWeightTon, parseFloat(distanceKm)),
+    [totalWeightTon, distanceKm]
+  );
+
   const handlePlaceOrder = () => {
+    // Snapshot ESG & total sebelum keranjang dikosongkan
+    setOrderEsg(esg.valid ? { saved: esg.saved } : null);
+    setOrderTotal(grandTotal);
     setOrderPlaced(true);
+    clearCart();
   };
 
+  const handleSelectCity = (e) => {
+    const cityName = e.target.value;
+    setDestination(cityName);
+    const city = DESTINATION_CITIES.find((c) => c.name === cityName);
+    if (city) setDistanceKm(String(city.refDistance));
+  };
+
+  /* ============================================================
+     RENDER: KONFIRMASI PESANAN
+     ============================================================ */
   if (orderPlaced) {
     return (
       <div className="p-4 lg:p-8 min-h-screen flex items-center justify-center">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+            <Check className="w-10 h-10 text-emerald-400" strokeWidth={2} />
           </div>
           <h2 className="text-2xl font-bold text-slate-50 mb-2">Pesanan Terkonfirmasi!</h2>
-          <p className="text-slate-400 mb-2">No. Pesanan: <span className="text-emerald-400 font-mono font-bold">TRP-2024-08471</span></p>
-          <p className="text-slate-500 text-sm mb-8">
-            Dana escrow sebesar <strong className="text-slate-300">Rp {grandTotal.toLocaleString('id-ID')}</strong> telah diblokir dengan aman. 
-            Dana akan dilepas setelah barang diterima dan dikonfirmasi.
+          <p className="text-slate-400 mb-2">
+            No. Pesanan:{" "}
+            <span className="text-emerald-400 font-mono font-bold">TRP-2026-08471</span>
           </p>
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6 text-left">
+          <p className="text-slate-500 text-sm mb-4">
+            Dana escrow sebesar{" "}
+            <strong className="text-slate-300">{formatRupiah(orderTotal)}</strong> telah
+            diblokir dengan aman. Dana akan dilepas setelah barang diterima dan dikonfirmasi.
+          </p>
+
+          {orderEsg && (
+            <Card variant="emerald" padding="sm" className="mb-6 p-4">
+              <p className="text-xs text-emerald-500 font-semibold uppercase tracking-wide mb-1">
+                Kontribusi ESG Anda
+              </p>
+              <p className="text-2xl font-extrabold text-emerald-400 tabular-nums">
+                {formatAngka(orderEsg.saved, 2)} kg CO₂e
+              </p>
+              <p className="text-[11px] text-teal-600 mt-0.5">
+                berhasil dihemat via rute VMS & Smart Load TaniPro 🌱
+              </p>
+            </Card>
+          )}
+
+          <Card padding="md" className="mb-6 text-left">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">Status Pengiriman</h3>
             <div className="space-y-3">
-              {['Pesanan Dikonfirmasi', 'Proses Penyiapan Barang', 'Barang Diserahkan ke Driver', 'Dalam Perjalanan', 'Terkirim'].map((s, i) => (
+              {[
+                "Pesanan Dikonfirmasi",
+                "Proses Penyiapan Barang",
+                "Barang Diserahkan ke Driver",
+                "Dalam Perjalanan",
+                "Terkirim",
+              ].map((s, i) => (
                 <div key={s} className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${i === 0 ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'}`}>
-                    {i === 0 && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      i === 0 ? "bg-emerald-500 border-emerald-500" : "border-white/20"
+                    }`}
+                  >
+                    {i === 0 && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                   </div>
-                  <span className={`text-sm ${i === 0 ? 'text-emerald-400 font-medium' : 'text-slate-600'}`}>{s}</span>
+                  <span
+                    className={`text-sm ${
+                      i === 0 ? "text-emerald-400 font-medium" : "text-slate-600"
+                    }`}
+                  >
+                    {s}
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
+
           <div className="flex gap-3">
-            <Link href="/pembeli" className="flex-1 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium hover:bg-white/8 transition text-center">
+            <Link
+              href="/pembeli"
+              className="flex-1 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium hover:bg-white/8 transition text-center"
+            >
               Kembali Belanja
             </Link>
-            <Link href="/pembeli/esg" className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-400 transition text-center">
+            <Link
+              href="/pembeli/esg"
+              className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-400 transition text-center"
+            >
               Lihat Laporan ESG
             </Link>
           </div>
@@ -143,130 +220,210 @@ export default function CheckoutPage() {
     );
   }
 
+  /* ============================================================
+     RENDER: HALAMAN CHECKOUT
+     ============================================================ */
   return (
     <div className="p-4 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-3">
-          <Link href="/pembeli" className="hover:text-slate-300 transition">Marketplace</Link>
+          <Link href="/pembeli" className="hover:text-slate-300 transition">
+            Marketplace
+          </Link>
           <span>/</span>
           <span className="text-slate-300">Checkout</span>
         </div>
         <h1 className="text-2xl font-bold text-slate-50">Checkout & Simulasi Logistik</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Sistem AI memilih armada terbaik berdasarkan berat dan volume muatan Anda</p>
+        <p className="text-slate-500 text-sm mt-0.5">
+          Sistem AI memilih armada terbaik & menghitung jejak karbon pengiriman Anda secara
+          real-time
+        </p>
       </div>
 
-      {/* Progress steps */}
+      {/* Progress steps — dirender dari state machine wizard */}
       <div className="flex items-center gap-0 mb-8">
-        {['Ringkasan Pesanan', 'Pilih Armada', 'Pembayaran'].map((label, i) => {
+        {wizard.steps.map((label, i) => {
           const stepNum = i + 1;
-          const isActive = step === stepNum;
-          const isDone = step > stepNum;
+          const isActive = wizard.isActive(stepNum);
+          const isDone = wizard.isDone(stepNum);
           return (
             <div key={label} className="flex items-center flex-1">
               <div className="flex items-center gap-2 flex-shrink-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                  isDone ? 'bg-emerald-500 border-emerald-500 text-white' :
-                  isActive ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' :
-                  'border-white/20 text-slate-600'
-                }`}>
-                  {isDone ? '✓' : stepNum}
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                    isDone
+                      ? "bg-emerald-500 border-emerald-500 text-white"
+                      : isActive
+                        ? "border-emerald-500 text-emerald-400 bg-emerald-500/10"
+                        : "border-white/20 text-slate-600"
+                  }`}
+                >
+                  {isDone ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : stepNum}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block ${isActive ? 'text-slate-200' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>{label}</span>
+                <span
+                  className={`text-xs font-medium hidden sm:block ${
+                    isActive ? "text-slate-200" : isDone ? "text-emerald-400" : "text-slate-600"
+                  }`}
+                >
+                  {label}
+                </span>
               </div>
-              {i < 2 && <div className={`flex-1 h-px mx-2 ${step > stepNum ? 'bg-emerald-500/50' : 'bg-white/10'}`} />}
+              {i < wizard.totalSteps - 1 && (
+                <div
+                  className={`flex-1 h-px mx-2 ${
+                    wizard.isDone(stepNum) ? "bg-emerald-500/50" : "bg-white/10"
+                  }`}
+                />
+              )}
             </div>
           );
         })}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main column */}
+        {/* Kolom utama */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Step 1: Ringkasan pesanan + Kalkulator ESG */}
+          {wizard.isActive(1) && (
+            <>
+              <Card padding="lg">
+                <CardTitle className="mb-4">
+                  <ClipboardList className="w-5 h-5 text-emerald-400" strokeWidth={1.5} />
+                  Ringkasan Pesanan
+                </CardTitle>
 
-          {/* Step 1: Order summary */}
-          {step === 1 && (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Ringkasan Pesanan
-              </h2>
-              <div className="space-y-3">
-                {mockOrderItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-2xl">
-                      {item.name.includes('Beras') ? '🌾' : '🌽'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-200 truncate">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.qty.toLocaleString('id-ID')} {item.unit} · {item.weight.toLocaleString('id-ID')} kg · {item.volume} m³</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-emerald-400">Rp {(item.price * item.qty).toLocaleString('id-ID')}</p>
-                      <p className="text-xs text-slate-600">Rp {item.price.toLocaleString('id-ID')}/{item.unit}</p>
-                    </div>
+                {items.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-slate-500 mb-3">Keranjang Anda kosong.</p>
+                    <Link
+                      href="/pembeli/katalog"
+                      className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition"
+                    >
+                      Jelajahi Katalog →
+                    </Link>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="space-y-3">
+                    {items.map((item) => (
+                      <Card
+                        key={item.id}
+                        variant="subtle"
+                        className="flex items-center gap-4 p-3"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-2xl">
+                          {item.name.includes("Beras")
+                            ? "🌾"
+                            : item.name.includes("Jagung")
+                              ? "🌽"
+                              : "🥬"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-200 truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatAngka(item.qty)} {item.unit} · {formatAngka(item.weight)} kg
+                            {item.volume ? ` · ${formatAngka(item.volume, 1)} m³` : ""}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-emerald-400">
+                            {formatRupiah(item.price * item.qty)}
+                          </p>
+                          <p className="text-xs text-slate-600">
+                            {formatRupiah(item.price)}/{item.unit}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Hapus ${item.name}`}
+                          className="text-slate-500 hover:text-rose-400 hover:border-rose-500/30"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
-              {/* Weight/volume summary */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="bg-slate-800/50 border border-white/5 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-slate-100">{totalWeight.toLocaleString('id-ID')}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Total Berat (kg)</p>
+                {/* Ringkasan berat/volume */}
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Card variant="solid" padding="sm" className="text-center">
+                    <p className="text-2xl font-bold text-slate-100">
+                      {formatAngka(totalWeightTon, 2)}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Total Berat (Ton)</p>
+                  </Card>
+                  <Card variant="solid" padding="sm" className="text-center">
+                    <p className="text-2xl font-bold text-slate-100">
+                      {formatAngka(totalVolumeM3, 1)}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Total Volume (m³)</p>
+                  </Card>
                 </div>
-                <div className="bg-slate-800/50 border border-white/5 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-slate-100">{totalVolume.toFixed(1)}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Total Volume (m³)</p>
-                </div>
-              </div>
+              </Card>
 
-              {/* Destination */}
-              <div className="mt-4">
-                <label className="text-xs font-medium text-slate-400 block mb-1.5">Alamat Tujuan Pengiriman</label>
-                <input
-                  type="text"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Masukkan alamat lengkap tujuan..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition"
-                />
-              </div>
+              {/* MESIN KALKULASI ESG (komponen terekstrak — FIX P0 focus-loss) */}
+              <EsgCalculatorCard
+                destination={destination}
+                onDestinationChange={handleSelectCity}
+                distanceKm={distanceKm}
+                onDistanceKmChange={(e) => setDistanceKm(e.target.value)}
+                esg={esg}
+                totalWeightKg={totalWeightKg}
+                totalWeightTon={totalWeightTon}
+              />
 
-              <button
-                onClick={() => setStep(2)}
-                className="mt-4 w-full bg-emerald-500 hover:bg-emerald-400 text-white font-semibold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
+              <Button
+                fullWidth
+                onClick={wizard.next}
+                disabled={!wizard.canProceed}
               >
                 Simulasi Armada
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </>
           )}
 
-          {/* Step 2: Fleet selection */}
-          {step === 2 && (
+          {/* Step 2: Pemilihan armada */}
+          {wizard.isActive(2) && (
             <div className="space-y-4">
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-start gap-3">
-                <svg className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+                <Lightbulb className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-emerald-400">Rekomendasi AI Logistik</p>
+                  <p className="text-sm font-semibold text-emerald-400">
+                    Rekomendasi AI Logistik (Smart Load)
+                  </p>
                   <p className="text-xs text-emerald-600 mt-0.5">
-                    Total muatan <strong className="text-emerald-400">{totalWeight.toLocaleString('id-ID')} kg</strong> dan <strong className="text-emerald-400">{totalVolume.toFixed(1)} m³</strong> — 
-                    Armada <strong className="text-emerald-300">{fleetOptions.find(f => f.id === recommendedId)?.name}</strong> adalah pilihan optimal.
+                    Total muatan{" "}
+                    <strong className="text-emerald-400">
+                      {formatAngka(totalWeightTon, 2)} Ton
+                    </strong>{" "}
+                    dan{" "}
+                    <strong className="text-emerald-400">
+                      {formatAngka(totalVolumeM3, 1)} m³
+                    </strong>{" "}
+                    — Armada <strong className="text-emerald-300">{esg.fleet.name}</strong>{" "}
+                    adalah pilihan optimal (kapasitas {esg.fleet.capacity} Ton, EF{" "}
+                    {esg.fleet.emissionFactor} kg CO₂e/km).
                   </p>
                 </div>
               </div>
 
-              {fleetOptions.map((f) => {
+              {FLEET_OPTIONS.map((f) => {
                 const c = colorMap[f.color];
                 const isSelected = selectedFleet === f.id;
-                const isRecommended = f.id === recommendedId;
+                const isRecommended = f.id === esg.fleet.id;
+                const esgFleetData = TANIPRO_FLEETS.find((t) => t.id === f.id);
+                const estEmission =
+                  esg.valid && esgFleetData
+                    ? Math.ceil(totalWeightTon / esgFleetData.capacity) *
+                      esg.D_opt *
+                      esgFleetData.emissionFactor
+                    : null;
                 return (
                   <button
                     key={f.id}
@@ -274,19 +431,21 @@ export default function CheckoutPage() {
                     className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 ${
                       isSelected
                         ? `${c.border} ${c.bg} ${c.glow}`
-                        : 'border-white/10 bg-white/[0.03] hover:border-white/20'
+                        : "border-white/10 bg-white/[0.03] hover:border-white/20"
                     }`}
                   >
                     <div className="flex items-start gap-4">
                       <span className="text-4xl mt-0.5">{f.icon}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className={`text-base font-semibold ${isSelected ? c.text : 'text-slate-200'}`}>{f.name}</span>
-                          {isRecommended && (
-                            <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
-                              ✦ Direkomendasikan
-                            </span>
-                          )}
+                          <span
+                            className={`text-base font-semibold ${
+                              isSelected ? c.text : "text-slate-200"
+                            }`}
+                          >
+                            {f.name}
+                          </span>
+                          {isRecommended && <Badge>✦ Direkomendasikan</Badge>}
                         </div>
                         <p className="text-xs text-slate-500 mb-3">{f.bestFor}</p>
 
@@ -300,17 +459,33 @@ export default function CheckoutPage() {
                             <p className="text-sm font-medium text-slate-300">{f.time}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-slate-600">Emisi CO₂</p>
-                            <p className="text-sm font-medium text-teal-400">{f.co2} kg CO₂</p>
+                            <p className="text-xs text-slate-600">Emisi CO₂e</p>
+                            <p className="text-sm font-medium text-teal-400">
+                              {estEmission !== null
+                                ? `${formatAngka(estEmission, 1)} kg`
+                                : "—"}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-slate-600">Biaya Angkut</p>
-                            <p className={`text-sm font-bold ${isSelected ? c.text : 'text-slate-200'}`}>{f.priceLabel}</p>
+                            <p
+                              className={`text-sm font-bold ${
+                                isSelected ? c.text : "text-slate-200"
+                              }`}
+                            >
+                              {f.priceLabel}
+                            </p>
                           </div>
                         </div>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 transition-all ${isSelected ? `${c.border} ${c.bg}` : 'border-white/20'}`}>
-                        {isSelected && <div className={`w-full h-full rounded-full scale-50 ${c.bg.replace('bg-', 'bg-').replace('/10', '')}`} />}
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 transition-all ${
+                          isSelected ? `${c.border} ${c.bg}` : "border-white/20"
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className={`w-full h-full rounded-full scale-50 ${c.dot}`} />
+                        )}
                       </div>
                     </div>
                   </button>
@@ -318,107 +493,98 @@ export default function CheckoutPage() {
               })}
 
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setStep(1)} className="flex-1 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium hover:bg-white/8 transition">
+                <Button variant="ghost" className="flex-1" onClick={wizard.back}>
                   Kembali
-                </button>
-                <button
-                  onClick={() => selectedFleet && setStep(3)}
-                  disabled={!selectedFleet}
-                  className="flex-1 py-2.5 bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm hover:bg-emerald-400 transition"
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={wizard.next}
+                  disabled={!wizard.canProceed}
                 >
                   Lanjut ke Pembayaran
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Payment */}
-          {step === 3 && (
+          {/* Step 3: Pembayaran */}
+          {wizard.isActive(3) && (
             <div className="space-y-4">
-              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
-                <h2 className="text-base font-semibold text-slate-200 mb-4">Metode Pembayaran</h2>
+              <Card padding="lg">
+                <CardTitle className="mb-4">Metode Pembayaran</CardTitle>
                 <div className="space-y-3">
-                  {[
-                    {
-                      id: 'escrow',
-                      label: 'Escrow TaniPro',
-                      desc: 'Dana ditahan hingga barang diterima & dikonfirmasi. Transaksi aman 100%.',
-                      badge: 'Disarankan',
-                      icon: '🔒',
-                    },
-                    {
-                      id: 'transfer',
-                      label: 'Transfer Bank Langsung',
-                      desc: 'Transfer ke rekening petani/koperasi. Proses manual 1–2 hari kerja.',
-                      badge: null,
-                      icon: '🏦',
-                    },
-                    {
-                      id: 'credit',
-                      label: 'Kredit Usaha (Cicilan)',
-                      desc: 'Bayar nanti dengan tenor 30–90 hari. Tersedia untuk pembeli terverifikasi.',
-                      badge: 'KUR Ready',
-                      icon: '📋',
-                    },
-                  ].map((m) => (
+                  {PAYMENT_METHODS.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setPaymentMethod(m.id)}
                       className={`w-full text-left p-4 rounded-xl border transition-all ${
                         paymentMethod === m.id
-                          ? 'border-emerald-500/40 bg-emerald-500/8'
-                          : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                          ? "border-emerald-500/40 bg-emerald-500/8"
+                          : "border-white/10 bg-white/[0.02] hover:border-white/20"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{m.icon}</span>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-semibold ${paymentMethod === m.id ? 'text-emerald-400' : 'text-slate-200'}`}>{m.label}</span>
+                            <span
+                              className={`text-sm font-semibold ${
+                                paymentMethod === m.id ? "text-emerald-400" : "text-slate-200"
+                              }`}
+                            >
+                              {m.label}
+                            </span>
                             {m.badge && (
-                              <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-medium">{m.badge}</span>
+                              <Badge size="xs" className="rounded">
+                                {m.badge}
+                              </Badge>
                             )}
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
                         </div>
-                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${paymentMethod === m.id ? 'border-emerald-500 bg-emerald-500' : 'border-white/30'}`} />
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
+                            paymentMethod === m.id
+                              ? "border-emerald-500 bg-emerald-500"
+                              : "border-white/30"
+                          }`}
+                        />
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
+              </Card>
 
               <div className="flex gap-3">
-                <button onClick={() => setStep(2)} className="flex-1 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-medium hover:bg-white/8 transition">
+                <Button variant="ghost" className="flex-1" onClick={wizard.back}>
                   Kembali
-                </button>
-                <button
-                  onClick={handlePlaceOrder}
-                  className="flex-1 py-2.5 bg-emerald-500 text-white font-semibold rounded-xl text-sm hover:bg-emerald-400 transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                </Button>
+                <Button className="flex-1" onClick={handlePlaceOrder}>
+                  <Lock className="w-4 h-4" />
                   Konfirmasi & Blokir Dana Escrow
-                </button>
+                </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Order summary sidebar */}
+        {/* Sidebar ringkasan biaya */}
         <div className="space-y-4">
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 sticky top-20">
+          <Card padding="md" className="sticky top-20">
             <h3 className="text-sm font-semibold text-slate-300 mb-4">Ringkasan Biaya</h3>
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between text-slate-400">
                 <span>Subtotal Produk</span>
-                <span className="text-slate-200 font-medium">Rp {subtotal.toLocaleString('id-ID')}</span>
+                <span className="text-slate-200 font-medium">{formatRupiah(subtotal)}</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Biaya Logistik</span>
                 <span className="text-slate-200 font-medium">
-                  {fleet ? fleet.priceLabel : <span className="text-slate-600 italic">Pilih armada</span>}
+                  {fleet ? (
+                    fleet.priceLabel
+                  ) : (
+                    <span className="text-slate-600 italic">Pilih armada</span>
+                  )}
                 </span>
               </div>
               <div className="flex justify-between text-slate-400">
@@ -427,34 +593,54 @@ export default function CheckoutPage() {
               </div>
               <div className="border-t border-white/10 pt-2.5 flex justify-between">
                 <span className="font-semibold text-slate-200">Total</span>
-                <span className="font-bold text-emerald-400 text-base">Rp {grandTotal.toLocaleString('id-ID')}</span>
-              </div>
-            </div>
-
-            {fleet && (
-              <div className="mt-4 p-3 bg-teal-500/8 border border-teal-500/20 rounded-xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945" />
-                  </svg>
-                  <span className="text-xs font-semibold text-teal-400">Dampak Lingkungan</span>
-                </div>
-                <p className="text-xs text-teal-600">Pengiriman ini menghasilkan <span className="text-teal-300 font-medium">{fleet.co2} kg CO₂</span>. Anda menghemat <span className="text-teal-300 font-medium">64%</span> vs pengiriman retail konvensional.</p>
-              </div>
-            )}
-
-            {/* Tani points */}
-            <div className="mt-3 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                <span className="text-xs text-emerald-400 font-medium">
-                  +{Math.floor(grandTotal / 1000)} Tani Point dari pesanan ini
+                <span className="font-bold text-emerald-400 text-base">
+                  {formatRupiah(grandTotal)}
                 </span>
               </div>
             </div>
-          </div>
+
+            {/* Ringkasan ESG mini (real-time) */}
+            {esg.valid && (
+              <Card variant="teal" padding="sm" className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Route className="w-4 h-4 text-teal-400" />
+                  <span className="text-xs font-semibold text-teal-400">
+                    Dampak Lingkungan (ESG)
+                  </span>
+                </div>
+                <div className="space-y-1 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Konvensional (L300)</span>
+                    <span className="text-rose-400 font-semibold tabular-nums">
+                      {formatAngka(esg.E_conv, 2)} kg
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">TaniPro ({esg.fleet.name})</span>
+                    <span className="text-emerald-400 font-semibold tabular-nums">
+                      {formatAngka(esg.E_tp, 2)} kg
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
+                    <span className="text-teal-500 font-medium">CO₂e Dihemat</span>
+                    <span className="text-teal-300 font-bold tabular-nums">
+                      {formatAngka(esg.saved, 2)} kg (↓{formatAngka(esg.savedPercent)}%)
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Tani Point */}
+            <div className="mt-3 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+                <span className="text-xs text-emerald-400 font-medium">
+                  +{formatAngka(Math.floor(grandTotal / 1000))} Tani Point dari pesanan ini
+                </span>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

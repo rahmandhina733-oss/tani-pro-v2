@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { rekomendasiFleet, hitungESG, hitungPointPembeli } from "@/lib/utils";
+import { hitungPointPembeli } from "@/lib/tani-point";
+import { calculateEsg, getEsgFleet } from "@/lib/esg";
+import { rekomendasiFleet } from "@/lib/fleet";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/orders
@@ -179,18 +181,24 @@ export async function POST(request) {
       });
 
       // 4. Create ESG record if distance provided
+      //    SSOT: rumus & data armada dari lib/esg.js — identik dengan
+      //    kalkulator ESG di halaman checkout (frontend).
+      //    E_conv = ceil(W/C_pickup) × D × EF_pickup   (baseline L300)
+      //    E_tp   = ceil(W/C_armada) × (D×0.7) × EF_armada
       let esgRecord = null;
       if (jarakKm && fleetTerpilih) {
-        const esg = hitungESG({ beratKg: totalBeratKg, jarakKm: parseFloat(jarakKm), fleetTipe: fleetTerpilih.tipe });
-        if (esg) {
+        const beratTon = totalBeratKg / 1000; // rumus ESG memakai satuan Ton
+        const fleetEsg = getEsgFleet(fleetTerpilih.tipe);
+        const esg = calculateEsg(beratTon, parseFloat(jarakKm), fleetEsg);
+        if (esg.valid) {
           esgRecord = await tx.esgRecord.create({
             data: {
               orderId: order.id,
-              co2eDisimpanKg: esg.co2eDisimpanKg,
-              co2eEmisiKg: esg.emisiAktualKg,
+              co2eDisimpanKg: parseFloat(esg.saved.toFixed(2)),
+              co2eEmisiKg: parseFloat(esg.E_tp.toFixed(2)),
               jarakKm: parseFloat(jarakKm),
               fleetTipe: fleetTerpilih.tipe,
-              perbandinganBaseline: esg.emisiBaselineKg,
+              perbandinganBaseline: parseFloat(esg.E_conv.toFixed(2)),
             },
           });
         }

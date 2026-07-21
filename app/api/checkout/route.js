@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
-import { rekomendasiFleet, hitungESG, hitungVolumeKardus } from "@/lib/utils";
+import { hitungVolumeKardus } from "@/lib/cargo";
+import { calculateEsg, getEsgFleet } from "@/lib/esg";
+import { rekomendasiFleet } from "@/lib/fleet";
 
 // POST /api/checkout — Simulate fleet recommendation & ESG BEFORE ordering
 // Body: { items: [{ jumlahKg, beratSatuan?, panjangCm?, lebarCm?, tinggiCm? }], jarakKm }
+//
+// FIX P0 (ESG Engine Conflict): route ini kini memakai SSOT yang sama dengan
+// frontend checkout — data armada dari lib/esg.js (TANIPRO_FLEETS) dan
+// rumus `calculateEsg` (baseline Pick-up L300 + optimasi rute VMS 30%),
+// menggantikan rumus lama `hitungESG` di lib/utils yang hasilnya berbeda.
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -37,14 +44,24 @@ export async function POST(request) {
 
     const fleetResult = rekomendasiFleet(totalBeratKg, totalVolumeM3);
 
+    // Simulasi ESG per armada — rumus identik dengan kalkulator di frontend
     const esgPerFleet = {};
     if (jarakKm) {
+      const beratTon = totalBeratKg / 1000;
       for (const fleet of fleetResult.semua) {
-        esgPerFleet[fleet.tipe] = hitungESG({
-          beratKg: totalBeratKg,
-          jarakKm: parseFloat(jarakKm),
-          fleetTipe: fleet.tipe,
-        });
+        const esg = calculateEsg(beratTon, parseFloat(jarakKm), getEsgFleet(fleet.tipe));
+        esgPerFleet[fleet.tipe] = esg.valid
+          ? {
+              emisiAktualKg: parseFloat(esg.E_tp.toFixed(2)),
+              emisiBaselineKg: parseFloat(esg.E_conv.toFixed(2)),
+              co2eDisimpanKg: parseFloat(esg.saved.toFixed(2)),
+              penghematanPersen: parseFloat(esg.savedPercent.toFixed(1)),
+              jarakOptimasiKm: parseFloat(esg.D_opt.toFixed(1)),
+              tripsKonvensional: esg.tripsConv,
+              tripsTaniPro: esg.tripsTp,
+              metodologi: "SSOT lib/esg.js — baseline Pick-up L300, VMS -30% jarak",
+            }
+          : null;
       }
     }
 
