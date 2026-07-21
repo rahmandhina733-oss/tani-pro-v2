@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Download } from 'lucide-react';
 
 const STATUS_CONFIG = {
   MENUNGGU:     { label: 'Menunggu Pembayaran', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
@@ -79,6 +80,19 @@ export default function PembeliEscrowPage() {
                   >
                     Konfirmasi Diterima
                   </button>
+                ) : e.status === 'DILEPAS' ? (
+                  // FIX TUGAS 3: tombol unduh hanya muncul untuk transaksi
+                  // yang statusnya sudah 'selesai' (Escrow DILEPAS).
+                  // CATATAN: `e.orderId` di sini adalah data mock ("ORD-XXXX");
+                  // di produksi ganti dengan Order.id (cuid) sungguhan dari Prisma
+                  // agar cocok dengan /api/orders/[id]/esg-report.
+                  <a
+                    href={`/api/orders/${e.orderId}/esg-report`}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 text-emerald-400 font-semibold text-xs transition-all whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Unduh Laporan ESG
+                  </a>
                 ) : (
                   <span className="text-xs text-slate-600 whitespace-nowrap">Selesai</span>
                 )}

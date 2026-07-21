@@ -95,7 +95,8 @@ export async function GET(request) {
 // POST /api/produk
 // Body: { petaniId, nama, deskripsi, kategori, hargaPerKg, stokKg,
 //         beratSatuan, panjangCm, lebarCm, tinggiCm, gambarUrls,
-//         status, minPesanan, sertifikasi }
+//         status, minPesanan, sertifikasi,
+//         umurSimpanHari, warnaVisual, gradeKualitas }   // FIX TUGAS 4
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request) {
   try {
@@ -104,12 +105,31 @@ export async function POST(request) {
       petaniId, nama, deskripsi, kategori, hargaPerKg,
       stokKg, beratSatuan, panjangCm, lebarCm, tinggiCm,
       gambarUrls, status, minPesanan, sertifikasi,
+      umurSimpanHari, warnaVisual, gradeKualitas, // FIX TUGAS 4 — field baru wajib
     } = body;
 
-    // Validate required fields
+    // Validate required fields (termasuk 3 field baru Tugas 4)
     if (!petaniId || !nama || !kategori || !hargaPerKg || !stokKg || !beratSatuan) {
       return NextResponse.json(
         { success: false, pesan: "Field wajib tidak lengkap: petaniId, nama, kategori, hargaPerKg, stokKg, beratSatuan" },
+        { status: 400 }
+      );
+    }
+    if (umurSimpanHari === undefined || umurSimpanHari === null || umurSimpanHari === "") {
+      return NextResponse.json(
+        { success: false, pesan: "Field wajib: umurSimpanHari (hari)" },
+        { status: 400 }
+      );
+    }
+    if (!warnaVisual) {
+      return NextResponse.json(
+        { success: false, pesan: "Field wajib: warnaVisual" },
+        { status: 400 }
+      );
+    }
+    if (!["A", "B", "C"].includes(gradeKualitas)) {
+      return NextResponse.json(
+        { success: false, pesan: "Field wajib: gradeKualitas harus salah satu dari A, B, C" },
         { status: 400 }
       );
     }
@@ -139,6 +159,9 @@ export async function POST(request) {
         status: status ?? "AKTIF",
         minPesanan: minPesanan ? parseFloat(minPesanan) : 10,
         sertifikasi: sertifikasi ?? [],
+        umurSimpanHari: parseInt(umurSimpanHari), // FIX TUGAS 4
+        warnaVisual,                              // FIX TUGAS 4
+        gradeKualitas,                             // FIX TUGAS 4
       },
       include: {
         petani: { select: { namaKebun: true, provinsi: true } },

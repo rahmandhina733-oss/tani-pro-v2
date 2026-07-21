@@ -29,6 +29,14 @@ import Button from "@/components/ui/Button";
    manipulasi string; setiap varian ditulis lengkap & literal)
    ============================================================ */
 const colorMap = {
+  slate: {
+    border: "border-slate-500/40",
+    bg: "bg-slate-500/10",
+    text: "text-slate-300",
+    badge: "bg-slate-500/15 text-slate-300",
+    glow: "shadow-[0_0_25px_-5px_rgba(100,116,139,0.3)]",
+    dot: "bg-slate-400",
+  },
   blue: {
     border: "border-blue-500/40",
     bg: "bg-blue-500/10",

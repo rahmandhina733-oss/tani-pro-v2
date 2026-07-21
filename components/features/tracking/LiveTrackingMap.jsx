@@ -27,11 +27,18 @@
  *                                       berlalu per 1 detik nyata (default 4 —
  *                                       supaya pergerakan terlihat saat demo)
  *   initialProgress number?             0..1, dipakai bila currentLocation kosong
+ *   livePosition    {lat,lng}?          FIX TUGAS 1 — posisi GPS NYATA dari
+ *                                       useLiveTracking()/SSE. Jika diisi,
+ *                                       simulasi setInterval otomatis berhenti
+ *                                       dan marker mengikuti koordinat asli.
+ *                                       Kosongkan untuk mode demo/simulasi.
  *   onProgressChange (progress, pos)=>void  callback tiap tick — dipakai panel
  *                                       samping untuk ETA & progress bar sinkron
  *
  * Simulasi VMS: useEffect + setInterval menggeser posisi truk di sepanjang
- * polyline (origin → waypoints → destination) hingga progress = 1.
+ * polyline (origin → waypoints → destination) hingga progress = 1. Mode ini
+ * OTOMATIS nonaktif ketika `livePosition` terisi (lihat badge "GPS LIVE" vs
+ * "SIMULASI" di overlay peta).
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -143,12 +150,15 @@ export default function LiveTrackingMap({
   speedKmh = 60,
   simMinutesPerSecond = 4,
   initialProgress = 0,
+  livePosition = null,
   onProgressChange,
 }) {
   const path = useMemo(
     () => buildPath(origin, waypoints, destination),
     [origin, destination, waypoints]
   );
+
+  const isLive = Number.isFinite(livePosition?.lat) && Number.isFinite(livePosition?.lng);
 
   const startProgress = useMemo(() => {
     return progressFromLocation(path, currentLocation) ?? initialProgress;
@@ -163,10 +173,23 @@ export default function LiveTrackingMap({
     cbRef.current = onProgressChange;
   }, [onProgressChange]);
 
-  /* ── SIMULASI REALTIME VMS ──
+  /* ── MODE GPS NYATA (FIX TUGAS 1) ──
+     Begitu `livePosition` terisi (dari useLiveTracking/SSE), marker mengikuti
+     koordinat asli — TIDAK ada setInterval simulasi yang berjalan di sini. */
+  useEffect(() => {
+    if (!isLive) return;
+    const p = progressFromLocation(path, livePosition) ?? progress;
+    setProgress(p);
+    setTruckPos(livePosition);
+    cbRef.current?.(p, livePosition);
+  }, [isLive, livePosition, path]);
+
+  /* ── MODE SIMULASI (demo, dipakai saat belum ada data GPS nyata) ──
      Tiap 1 detik nyata = `simMinutesPerSecond` menit perjalanan.
      Δprogress = (speedKmh × jamPerTick) / totalKm. Berhenti di 1. */
   useEffect(() => {
+    if (isLive) return; // GPS nyata aktif — simulasi tidak boleh menimpanya.
+
     const hoursPerTick = simMinutesPerSecond / 60;
     const deltaPerTick = (speedKmh * hoursPerTick) / path.totalKm;
 
@@ -185,7 +208,7 @@ export default function LiveTrackingMap({
     cbRef.current?.(startProgress, pointAtProgress(path, startProgress));
 
     return () => clearInterval(interval);
-  }, [path, speedKmh, simMinutesPerSecond, startProgress]);
+  }, [isLive, path, speedKmh, simMinutesPerSecond, startProgress]);
 
   const routePositions = path.pts.map((p) => [p.lat, p.lng]);
   const traveled = useMemo(() => {
@@ -241,11 +264,13 @@ export default function LiveTrackingMap({
         </Marker>
       </MapContainer>
 
-      {/* Badge overlay "LIVE" */}
+      {/* Badge overlay — jujur soal sumber data: GPS nyata vs simulasi demo */}
       <div className="pointer-events-none absolute left-3 top-3 z-[500] flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-slate-950/80 px-2.5 py-1.5 backdrop-blur-md">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+        <span
+          className={`h-2 w-2 rounded-full ${isLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`}
+        />
         <span className="text-[11px] font-semibold tracking-wide text-emerald-400">
-          LIVE VMS
+          {isLive ? "GPS LIVE" : "SIMULASI DEMO"}
         </span>
       </div>
     </div>

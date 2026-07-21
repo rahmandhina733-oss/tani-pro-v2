@@ -133,6 +133,9 @@ async function main() {
       status: "AKTIF",
       minPesanan: 100,
       sertifikasi: ["Organik Indonesia", "SNI", "HACCP"],
+      umurSimpanHari: 365,       // FIX TUGAS 4
+      warnaVisual: "Putih Bersih", // FIX TUGAS 4
+      gradeKualitas: "A",         // FIX TUGAS 4
     },
   });
 
@@ -155,6 +158,9 @@ async function main() {
       status: "AKTIF",
       minPesanan: 50,
       sertifikasi: ["Prima 3"],
+      umurSimpanHari: 7,          // FIX TUGAS 4
+      warnaVisual: "Merah Segar",  // FIX TUGAS 4
+      gradeKualitas: "A",          // FIX TUGAS 4
     },
   });
 
@@ -177,6 +183,9 @@ async function main() {
       status: "AKTIF",
       minPesanan: 50,
       sertifikasi: ["Organik Indonesia", "GMP"],
+      umurSimpanHari: 90,          // FIX TUGAS 4
+      warnaVisual: "Merah Kecoklatan", // FIX TUGAS 4
+      gradeKualitas: "B",           // FIX TUGAS 4
     },
   });
 

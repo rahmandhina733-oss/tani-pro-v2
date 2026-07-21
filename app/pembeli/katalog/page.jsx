@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 /** Turunkan badge tampilan dari data asli produk (deterministik, tanpa mock). */
 function deriveBadge(produk) {
-  if (produk.status === "PRE_ORDER") return { label: "Pre-Order", tone: "purple" };
+  if (produk.gradeKualitas === "A") return { label: "Grade A", tone: "purple" };
   if (produk.petani?.sertifikasiOrganik) return { label: "Organik", tone: "emerald" };
   if (produk.stokKg >= 50000) return { label: "Stok Besar", tone: "blue" };
   if (produk.sertifikasi?.length > 0) return { label: produk.sertifikasi[0], tone: "teal" };
@@ -49,7 +49,9 @@ function toViewModel(produk) {
     stock: produk.stokKg,
     unitWeight: produk.beratSatuan, // kg per unit — dipakai store: weight = qty × unitWeight
     unitVolume: parseFloat(unitVolume.toFixed(5)),
-    isPreOrder: produk.status === "PRE_ORDER",
+    umurSimpanHari: produk.umurSimpanHari,
+    warnaVisual: produk.warnaVisual,
+    gradeKualitas: produk.gradeKualitas,
     certified: (produk.petani?.sertifikasiOrganik ?? false) || (produk.sertifikasi?.length ?? 0) > 0,
     tags: produk.sertifikasi ?? [],
     badge: deriveBadge(produk),
@@ -65,7 +67,7 @@ function toViewModel(produk) {
 async function getProducts() {
   try {
     const rows = await prisma.produk.findMany({
-      where: { status: { in: ["AKTIF", "PRE_ORDER"] } },
+      where: { status: "AKTIF" },
       include: {
         petani: {
           select: {

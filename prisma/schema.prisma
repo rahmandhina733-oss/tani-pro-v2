@@ -39,6 +39,7 @@ enum EscrowStatus {
 }
 
 enum FleetType {
+  PICKUP
   CDE
   CDD
   FUSO
@@ -54,7 +55,6 @@ enum VehicleStatus {
 enum ProductStatus {
   AKTIF
   HABIS
-  PRE_ORDER
   DIARSIPKAN
 }
 
@@ -112,7 +112,6 @@ model PetaniProfile {
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   produk    Produk[]
-  preOrders PreOrder[]
 
   @@map("petani_profiles")
 }
@@ -158,35 +157,22 @@ model Produk {
   status          ProductStatus @default(AKTIF)
   minPesanan      Float         @default(10) // minimum order in kg
   sertifikasi     String[]
+  umurSimpanHari  Int           // FIX Tugas 4: umur simpan produk (hari)
+  warnaVisual     String        // FIX Tugas 4: warna visual dominan produk
+  gradeKualitas   GradeKualitas // FIX Tugas 4: grade kualitas A/B/C
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   petani      PetaniProfile  @relation(fields: [petaniId], references: [id], onDelete: Cascade)
   orderItems  OrderItem[]
-  preOrders   PreOrder[]
 
   @@map("produk")
 }
 
-// ─────────────────────────────────────────────
-// PRE-ORDER
-// ─────────────────────────────────────────────
-
-model PreOrder {
-  id            String    @id @default(cuid())
-  produkId      String
-  petaniId      String
-  estimasiPanen DateTime
-  jumlahKg      Float
-  hargaPerKg    Float
-  deskripsi     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  produk  Produk        @relation(fields: [produkId], references: [id])
-  petani  PetaniProfile @relation(fields: [petaniId], references: [id])
-
-  @@map("pre_orders")
+enum GradeKualitas {
+  A
+  B
+  C
 }
 
 // ─────────────────────────────────────────────

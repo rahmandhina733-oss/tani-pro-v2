@@ -30,7 +30,10 @@ import {
   Scale,
   Truck,
   User,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+import useLiveTracking from "@/hooks/useLiveTracking";
 import Card, { CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { formatAngka } from "@/lib/format";
@@ -96,10 +99,17 @@ function formatEta(remainingHours) {
 }
 
 export default function PembeliTrackingPage({ params }) {
-  const orderId = (params?.id ?? "8471").toUpperCase();
+  const orderId = params?.id ?? "8471";
+  const orderIdDisplay = orderId.toUpperCase();
 
   /* Satu sumber progres: callback dari simulasi VMS di dalam peta. */
   const [progress, setProgress] = useState(0.35); // truk mock sudah 35% jalan
+
+  /* FIX TUGAS 1: dengarkan posisi GPS nyata via SSE (pengganti Supabase
+     Realtime). Selama Vehicle.latitudeSaat/longitudeSaat masih null di DB
+     (belum ada sopir yang mem-PATCH GPS), `position` tetap null — peta akan
+     otomatis jatuh ke mode simulasi demo, jadi halaman tetap bisa diuji coba. */
+  const { position: livePosition, connected } = useLiveTracking(orderId);
 
   const totalDurationH = ROUTE.totalKm / ROUTE.speedKmh;
   const remainingHours = totalDurationH * (1 - progress);
@@ -128,7 +138,7 @@ export default function PembeliTrackingPage({ params }) {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-50">
             Lacak Pesanan{" "}
-            <span className="font-mono text-emerald-400">#TRP-{orderId}</span>
+            <span className="font-mono text-emerald-400">#TRP-{orderIdDisplay}</span>
           </h1>
           <Badge tone={arrived ? "emerald" : "blue"} size="md">
             <Truck className="h-3 w-3" />
@@ -153,6 +163,7 @@ export default function PembeliTrackingPage({ params }) {
             initialProgress={0.35}
             speedKmh={ROUTE.speedKmh}
             simMinutesPerSecond={4}
+            livePosition={livePosition}
             onProgressChange={(p) => setProgress(p)}
           />
         </div>
@@ -161,11 +172,28 @@ export default function PembeliTrackingPage({ params }) {
         <div className="space-y-4">
           {/* (b) ETA dinamis */}
           <Card variant="emerald" padding="lg">
-            <div className="mb-1 flex items-center gap-2">
-              <Clock3 className="h-4 w-4 text-emerald-400" strokeWidth={1.8} />
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
-                Estimasi Tiba (ETA)
-              </p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4 text-emerald-400" strokeWidth={1.8} />
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                  Estimasi Tiba (ETA)
+                </p>
+              </div>
+              <span
+                className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
+                title={
+                  livePosition
+                    ? "Menerima koordinat GPS asli dari armada"
+                    : "Belum ada GPS asli — menampilkan simulasi demo"
+                }
+              >
+                {connected ? (
+                  <Wifi className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <WifiOff className="h-3 w-3 text-slate-600" />
+                )}
+                {livePosition ? "GPS live" : "Simulasi"}
+              </span>
             </div>
             <p className="text-3xl font-extrabold tabular-nums text-emerald-300">
               {arrived ? "Tiba 🎉" : formatEta(remainingHours)}

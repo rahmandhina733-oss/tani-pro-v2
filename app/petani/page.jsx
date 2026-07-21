@@ -3,7 +3,7 @@
 import Link from "next/link";
 import {
   Package, Wallet, Star, TrendingUp, ArrowRight, Sprout,
-  CalendarClock, Truck, BrainCircuit, Plus,
+  Truck, BrainCircuit, Plus,
 } from "lucide-react";
 import StatCard from "@/components/shared/StatCard";
 import { formatRupiah, formatAngka, formatTanggalPendek } from "@/lib/format";
@@ -27,9 +27,11 @@ const PESANAN_TERBARU = [
   { id: "ord_004", pembeli: "PT Cipta Boga",       produk: "Beras Premium Pandan Wangi", jumlahKg: 1200, total: 15000000, status: "PENDING",  createdAt: "2026-07-11" },
 ];
 
-const PRE_ORDER_MENDATANG = [
-  { id: "po_001", produk: "Cabai Merah Keriting", estimasiPanen: "2026-08-02", jumlahKg: 500 },
-  { id: "po_002", produk: "Bawang Merah Super",   estimasiPanen: "2026-08-10", jumlahKg: 1200 },
+// FIX TUGAS 4: fitur Pre-Order dihapus di seluruh aplikasi. Widget sidebar
+// digantikan "Stok Menipis" — lebih relevan untuk aksi harian petani.
+const STOK_MENIPIS = [
+  { id: "sm_001", produk: "Kedelai Lokal Grade A", stokKg: 180, minPesanan: 300 },
+  { id: "sm_002", produk: "Cabai Merah Keriting", stokKg: 45, minPesanan: 100 },
 ];
 
 export default function PetaniDashboardPage() {
@@ -132,26 +134,30 @@ export default function PetaniDashboardPage() {
           </div>
         </div>
 
-        {/* Sidebar: Pre-order + quick actions */}
+        {/* Sidebar: Stok menipis + quick actions */}
         <div className="space-y-6">
           <div className="glass-card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-slate-50">Pre-Order Mendatang</h2>
-              <CalendarClock className="w-4 h-4 text-slate-500" />
+              <h2 className="text-base font-semibold text-slate-50">Stok Menipis</h2>
+              <Package className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="space-y-3">
-              {PRE_ORDER_MENDATANG.map((po) => (
-                <div key={po.id} className="glass-card-accent p-3">
-                  <p className="text-sm font-medium text-slate-200">{po.produk}</p>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-xs text-slate-500">Panen {formatTanggalPendek(po.estimasiPanen)}</span>
-                    <span className="text-xs font-medium text-emerald-400">{formatAngka(po.jumlahKg)} kg</span>
+            {STOK_MENIPIS.length === 0 ? (
+              <p className="text-xs text-slate-500">Semua stok produk Anda dalam kondisi baik.</p>
+            ) : (
+              <div className="space-y-3">
+                {STOK_MENIPIS.map((s) => (
+                  <div key={s.id} className="glass-card-accent p-3">
+                    <p className="text-sm font-medium text-slate-200">{s.produk}</p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs text-amber-400">Sisa {formatAngka(s.stokKg)} kg</span>
+                      <span className="text-xs text-slate-500">Min. pesan {formatAngka(s.minPesanan)} kg</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <Link href="/petani/pre-order" className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300">
-              Kelola Pre-Order <ArrowRight className="w-3 h-3" />
+                ))}
+              </div>
+            )}
+            <Link href="/petani/toko" className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300">
+              Kelola Stok di Toko <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 

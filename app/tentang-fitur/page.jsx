@@ -76,7 +76,7 @@ const SECTIONS = [
     points: [
       "Analisis tren harga komoditas lintas wilayah secara berkala.",
       "Rekomendasi waktu tanam & panen berdasarkan data cuaca.",
-      "Saran strategi penjualan: kapan jual spot, kapan buka pre-order.",
+      "Saran strategi penjualan: kapan waktu terbaik jual spot berdasarkan tren harga pasar.",
       "Akses konsultasi premium via penukaran Tani Point.",
     ],
     placeholder: "Pratinjau antarmuka percakapan AI — segera hadir",

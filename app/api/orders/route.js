@@ -93,7 +93,7 @@ export async function POST(request) {
     // Fetch product details & validate stock
     const produkIds = items.map((i) => i.produkId);
     const produkList = await prisma.produk.findMany({
-      where: { id: { in: produkIds }, status: { in: ["AKTIF", "PRE_ORDER"] } },
+      where: { id: { in: produkIds }, status: "AKTIF" },
     });
 
     if (produkList.length !== produkIds.length) {

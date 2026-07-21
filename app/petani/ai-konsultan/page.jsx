@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BrainCircuit, Send, TrendingUp, CloudSun, Bug, ShoppingBasket, Sparkles } from "lucide-react";
+import { BrainCircuit, Send, TrendingUp, CloudSun, Bug, ShoppingBasket, Sparkles, TriangleAlert } from "lucide-react";
 import { hitungPointPetani } from "@/lib/tani-point";
 
 const TOPIK_SARAN = [
@@ -15,42 +15,54 @@ const RIWAYAT_AWAL = [
   {
     role: "ai",
     topik: "harga",
-    pesan: "Halo Pak Slamet! Saya AI Konsultan TaniPro. Berdasarkan data pasar 7 hari terakhir, harga Beras Premium Pandan Wangi di wilayah Anda naik 3,2% dibanding minggu lalu. Ini waktu yang baik untuk melepas stok tambahan jika tersedia. Ada yang ingin ditanyakan?",
+    pesan: "Halo Pak Slamet! Saya AI Konsultan TaniPro. Tanyakan apa saja soal harga pasar, cuaca, hama, atau strategi penjualan kebun Anda.",
   },
 ];
 
-// Jawaban mock per topik — di produksi ini dipanggil dari API /api/ai-konsultan
-const JAWABAN_MOCK = {
-  harga: "Harga rata-rata Beras Premium di Jawa Timur saat ini Rp12.500–13.200/kg, naik dari minggu lalu. Saran saya: tahan sebagian stok untuk 5–7 hari ke depan karena tren masih naik.",
-  cuaca: "Prakiraan BMKG untuk wilayah kebun Anda: hujan ringan 2 hari ke depan, lalu cerah berawan. Baik untuk aktivitas panen mulai hari Kamis.",
-  hama: "Untuk wereng batang coklat, gunakan varietas tahan wereng pada musim tanam berikutnya dan lakukan monitoring populasi mingguan. Jika serangan sudah terjadi, insektisida berbahan aktif buprofezin efektif pada fase nimfa.",
-  pasar: "Berdasarkan riwayat transaksi, PT Cipta Boga dan CV Sumber Pangan rutin memesan komoditas serupa dengan produk Anda. Pertimbangkan menawarkan kontrak pasokan berkala ke mereka.",
-  umum: "Terima kasih atas pertanyaannya. Tim AI kami sedang memproses data terbaru untuk memberikan rekomendasi yang paling relevan untuk kebun Anda.",
-};
+// TODO: ganti dengan id petani dari sesi login sesungguhnya (JWT payload).
+const MOCK_PETANI_ID = "petani_demo";
 
+/**
+ * FIX TUGAS 2: `JAWABAN_MOCK` statis DIHAPUS. Jawaban sekarang berasal dari
+ * LLM sungguhan (Gemini/OpenAI) via POST /api/ai-konsultan.
+ */
 export default function AiKonsultanPage() {
   const [riwayat, setRiwayat] = useState(RIWAYAT_AWAL);
   const [input, setInput] = useState("");
   const [mengetik, setMengetik] = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
   const bawahRef = useRef(null);
 
   useEffect(() => {
     bawahRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [riwayat, mengetik]);
+  }, [riwayat, mengetik, errorInfo]);
 
-  function kirimPesan(teks, topik = "umum") {
-    if (!teks.trim()) return;
+  async function kirimPesan(teks, topik = "umum") {
+    if (!teks.trim() || mengetik) return;
     setRiwayat((prev) => [...prev, { role: "user", pesan: teks }]);
     setInput("");
     setMengetik(true);
+    setErrorInfo(null);
 
-    setTimeout(() => {
-      setRiwayat((prev) => [
-        ...prev,
-        { role: "ai", topik, pesan: JAWABAN_MOCK[topik] ?? JAWABAN_MOCK.umum },
-      ]);
+    try {
+      const res = await fetch("/api/ai-konsultan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ petaniId: MOCK_PETANI_ID, pertanyaan: teks, topik }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        setErrorInfo(json.pesan || "AI Konsultan sedang tidak dapat dihubungi.");
+        return;
+      }
+
+      setRiwayat((prev) => [...prev, { role: "ai", topik, pesan: json.data.jawaban }]);
+    } catch {
+      setErrorInfo("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+    } finally {
       setMengetik(false);
-    }, 900);
+    }
   }
 
   return (
@@ -77,8 +89,9 @@ export default function AiKonsultanPage() {
           return (
             <button
               key={t.topik}
+              disabled={mengetik}
               onClick={() => kirimPesan(t.label, t.topik)}
-              className={`glass-card p-3.5 flex items-center gap-2.5 text-left hover:bg-white/[0.05] transition-colors`}
+              className="glass-card p-3.5 flex items-center gap-2.5 text-left hover:bg-white/[0.05] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               <div className={`p-2 rounded-lg border flex-shrink-0 ${t.warna}`}>
                 <Icon className="w-4 h-4" />
@@ -125,6 +138,20 @@ export default function AiKonsultanPage() {
               </div>
             </div>
           )}
+
+          {/* FIX TUGAS 2: error handling mulus — bubble error, bukan crash/diam */}
+          {errorInfo && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/25 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <TriangleAlert className="w-3.5 h-3.5 text-rose-400" />
+                </div>
+                <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-rose-500/10 border border-rose-500/20 text-rose-300">
+                  {errorInfo}
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={bawahRef} />
         </div>
 
@@ -138,8 +165,9 @@ export default function AiKonsultanPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tanyakan sesuatu tentang kebun Anda..."
             className="input-field flex-1"
+            disabled={mengetik}
           />
-          <button type="submit" className="btn-emerald !px-3.5 !py-2.5">
+          <button type="submit" className="btn-emerald !px-3.5 !py-2.5" disabled={mengetik || !input.trim()}>
             <Send className="w-4 h-4" />
           </button>
         </form>

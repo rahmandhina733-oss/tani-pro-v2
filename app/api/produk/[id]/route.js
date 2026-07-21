@@ -14,10 +14,6 @@ export async function GET(request, { params }) {
             user: { select: { nama: true, avatarUrl: true, telepon: true } },
           },
         },
-        preOrders: {
-          where: { estimasiPanen: { gte: new Date() } },
-          orderBy: { estimasiPanen: "asc" },
-        },
       },
     });
 
