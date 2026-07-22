@@ -18,8 +18,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  Leaf, Mail, Lock, User, Phone, Building2, Sprout,
-  ArrowRight, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff,
+  Leaf, Mail, Lock, User, Phone, Building2, Sprout, ShieldCheck,
+  ArrowRight, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, Zap,
 } from "lucide-react";
 
 const ROLE_OPTIONS = [
@@ -45,6 +45,33 @@ const DASHBOARD_BY_ROLE = {
   ADMIN:   "/admin", // admin tetap bisa login di sini jika sudah punya kredensial
 };
 
+// Akun demo untuk sesi penjurian — 1-klik login tanpa perlu mengetik.
+// CATATAN: kredensial ini harus benar-benar ada & valid di database/API
+// otentikasi sebelum sesi juri, kalau tidak tombol akan gagal login.
+const DEMO_ACCOUNTS = [
+  {
+    role:     "ADMIN",
+    label:    "Demo Admin",
+    email:    "admin@tanipro.id",
+    password: "admin123",
+    icon:     <ShieldCheck className="w-4 h-4" />,
+  },
+  {
+    role:     "PETANI",
+    label:    "Demo Petani",
+    email:    "budi@tanipro.id",
+    password: "petani123",
+    icon:     <Sprout className="w-4 h-4" />,
+  },
+  {
+    role:     "PEMBELI",
+    label:    "Demo Pembeli B2B",
+    email:    "pt.segar@tanipro.id",
+    password: "pembeli123",
+    icon:     <Building2 className="w-4 h-4" />,
+  },
+];
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -67,15 +94,18 @@ export default function LoginPage() {
   const set = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  async function handleSubmit() {
+  async function handleSubmit(overrides) {
     setError("");
     setSuccess("");
     setLoading(true);
 
+    const loginEmail    = overrides?.email    ?? form.email;
+    const loginPassword = overrides?.password ?? form.password;
+
     try {
       const payload =
         mode === "login"
-          ? { action: "login", email: form.email, password: form.password }
+          ? { action: "login", email: loginEmail, password: loginPassword }
           : {
               action: "register",
               nama: form.nama,
@@ -131,6 +161,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleDemoLogin(account) {
+    if (loading) return;
+    setMode("login");
+    setForm((f) => ({ ...f, email: account.email, password: account.password }));
+    // Kirim kredensial secara eksplisit agar tidak menunggu re-render state.
+    handleSubmit({ email: account.email, password: account.password });
   }
 
   const isRegister = mode === "register";
@@ -305,6 +343,34 @@ export default function LoginPage() {
               )}
             </button>
           </div>
+
+          {/* ── Akses Cepat Juri / Demo ── */}
+          {!isRegister && (
+            <div className="mt-6 pt-5 border-t border-white/[0.06]">
+              <div className="flex items-center gap-1.5 mb-3">
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">
+                  Akses Cepat Demo
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <button
+                    key={account.role}
+                    type="button"
+                    onClick={() => handleDemoLogin(account)}
+                    disabled={loading}
+                    className="group flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-emerald-400/20 bg-emerald-500/[0.06] text-emerald-300 text-[11px] font-medium leading-tight text-center transition-all duration-200 hover:border-emerald-400/50 hover:bg-emerald-500/15 hover:text-emerald-200 hover:-translate-y-0.5 hover:shadow-glow-emerald-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                  >
+                    <span className="text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                      {account.icon}
+                    </span>
+                    {account.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-xs text-slate-600 mt-6">
